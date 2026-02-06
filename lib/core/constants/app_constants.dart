@@ -10,6 +10,8 @@ class AppConstants {
   static const String genericError = 'Something went wrong. Please try again.';
   static const String networkError = 'Please check your internet connection.';
   static const String authError = 'Authentication failed. Please try again.';
+  static const String loading = 'Loading...';
+  static const String error = 'Error';
 
   // Validation messages
   static const String emailRequired = 'Email is required';

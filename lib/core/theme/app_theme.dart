@@ -29,10 +29,10 @@ class AppTheme {
           ),
         ),
       ),
-      cardTheme: CardTheme(
+      /* cardTheme: CardTheme(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      ), */
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
@@ -59,10 +59,10 @@ class AppTheme {
           ),
         ),
       ),
-      cardTheme: CardTheme(
+      /* cardTheme: CardTheme(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      ), */
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,

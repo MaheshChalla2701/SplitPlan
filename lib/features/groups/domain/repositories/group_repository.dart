@@ -8,4 +8,5 @@ abstract class GroupRepository {
   Stream<GroupEntity> watchGroup(String groupId);
   Future<void> addMember(String groupId, String userId);
   Future<void> removeMember(String groupId, String userId);
+  Future<GroupEntity> getGroup(String groupId);
 }
