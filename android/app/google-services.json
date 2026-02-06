@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1054542796306",
+    "project_id": "splitplan-app",
+    "storage_bucket": "splitplan-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1054542796306:android:0b4d30b40c335e89856acb",
+        "android_client_info": {
+          "package_name": "com.splitplan.splitplan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEkkoO6Nqcx9yXZ3XpCE69ogsWVjQuSC4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
