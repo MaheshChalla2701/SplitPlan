@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/presentation/providers/auth_providers.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/phone_input_screen.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
+import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/expenses/presentation/screens/add_expense_screen.dart';
 import '../../features/groups/presentation/screens/create_group_screen.dart';
@@ -28,13 +30,18 @@ GoRouter goRouter(Ref ref) {
 
       final isSplash = state.uri.toString() == '/';
       final isLogin = state.uri.toString() == '/login';
+      final isAuthRoute =
+          isLogin ||
+          state.uri.toString() == '/signup' ||
+          state.uri.toString() == '/phone-login' ||
+          state.uri.toString() == '/otp-verify';
 
       if (isLoading || hasError) {
         return null; // Let splash screen handle loading/error
       }
 
       if (!isAuthenticated) {
-        if (isLogin) return null;
+        if (isAuthRoute) return null;
         return '/login';
       }
 
@@ -46,8 +53,13 @@ GoRouter goRouter(Ref ref) {
     },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/login',
+        path: '/signup',
+        builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: '/phone-login',
         builder: (context, state) => const PhoneInputScreen(),
       ),
       GoRoute(

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../groups/presentation/providers/group_providers.dart';
 import '../providers/expense_providers.dart';
@@ -116,7 +115,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              // TODO: Add Payer and Split selection here
+              // Paid by you, split equally
               const Text(
                 'Paid by you, split equally',
                 style: TextStyle(color: Colors.grey),

@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "1054542796306",
-    "project_id": "splitplan-app",
-    "storage_bucket": "splitplan-app.firebasestorage.app"
+    "project_number": "260186827881",
+    "project_id": "splitplan-7b7a5",
+    "storage_bucket": "splitplan-7b7a5.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1054542796306:android:0b4d30b40c335e89856acb",
+        "mobilesdk_app_id": "1:260186827881:android:a700fb90b1c4233cddc6f8",
         "android_client_info": {
           "package_name": "com.splitplan.splitplan"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "260186827881-ngi899lotacl140o8fkfg24d4rfg3b8i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.splitplan.splitplan",
+            "certificate_hash": "9f60b8e62bdf28c0e56b2968db205947a341c61f"
+          }
+        },
+        {
+          "client_id": "260186827881-br8p721gb2o1l9acis9dv7ugsng8go7l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBEkkoO6Nqcx9yXZ3XpCE69ogsWVjQuSC4"
+          "current_key": "AIzaSyBOgV3Ihck1AWzn0sPDlux58yZnmZBBoGQ"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "260186827881-br8p721gb2o1l9acis9dv7ugsng8go7l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

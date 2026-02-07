@@ -53,10 +53,10 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBEkkoO6Nqcx9yXZ3XpCE69ogsWVjQuSC4',
-    appId: '1:1054542796306:android:0b4d30b40c335e89856acb',
-    messagingSenderId: '1054542796306',
-    projectId: 'splitplan-app',
-    storageBucket: 'splitplan-app.firebasestorage.app',
+    apiKey: 'AIzaSyBOgV3Ihck1AWzn0sPDlux58yZnmZBBoGQ',
+    appId: '1:260186827881:android:a700fb90b1c4233cddc6f8',
+    messagingSenderId: '260186827881',
+    projectId: 'splitplan-7b7a5',
+    storageBucket: 'splitplan-7b7a5.firebasestorage.app',
   );
 }

@@ -90,7 +90,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Paying User ${widget.toUserId}', // TODO: Show Name
+                'Paying User ${widget.toUserId}',
                 style: Theme.of(context).textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),

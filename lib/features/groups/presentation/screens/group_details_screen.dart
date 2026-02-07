@@ -21,15 +21,10 @@ class GroupDetailsScreen extends ConsumerWidget {
         title: groupAsync.when(
           data: (group) => Text(group.name),
           loading: () => const Text(AppConstants.loading),
-          error: (_, __) => const Text(AppConstants.error),
+          error: (_, _) => const Text(AppConstants.error),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // TODO: Navigate to group settings
-            },
-          ),
+          IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
         ],
       ),
       body: DefaultTabController(
@@ -65,9 +60,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                                 child: Icon(Icons.receipt),
                               ),
                               title: Text(expense.description),
-                              subtitle: Text(
-                                'Paid by you', // TODO: Resolve name from ID
-                              ),
+                              subtitle: Text('Paid by you'),
                               trailing: Text(
                                 '\$${expense.amount.toStringAsFixed(2)}',
                                 style: const TextStyle(
@@ -116,7 +109,6 @@ class GroupDetailsScreen extends ConsumerWidget {
 
                               return ListTile(
                                 title: Text(
-                                  // TODO: Replace ID with User Name
                                   'User ${entry.key}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
@@ -185,7 +177,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                       },
                     ),
                     loading: () => const SizedBox(),
-                    error: (_, __) => const SizedBox(),
+                    error: (_, _) => const SizedBox(),
                   ),
                 ],
               ),

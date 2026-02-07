@@ -32,7 +32,6 @@ class AuthRepositoryImpl implements AuthRepository {
         return null; // User exists in Auth but not in Firestore (edge case)
       } catch (e) {
         // Fallback or error handling
-        print('Error fetching user data: $e');
         return null;
       }
     });
@@ -55,9 +54,8 @@ class AuthRepositoryImpl implements AuthRepository {
               .toIso8601String(),
         });
       }
-    } catch (e) {
-      print('Error getting current user: $e');
-    }
+      // Error getting current user
+    } catch (_) {}
     return null;
   }
 
