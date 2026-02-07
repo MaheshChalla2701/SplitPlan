@@ -16,17 +16,17 @@ class AuthRepositoryImpl implements AuthRepository {
       try {
         final doc = await _firestore.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data() != null) {
-          // Convert Firestore timestamp to DateTime manually if needed,
-          // but Freezed/JsonSerializable handles generic maps.
-          // However, Timestamp needs explicit conversion often.
           final data = doc.data()!;
           return UserEntity.fromJson({
             'id': doc.id,
             ...data,
-            // Handle Timestamp conversion if necessary or let helper do it
             'createdAt': (data['createdAt'] as Timestamp)
                 .toDate()
                 .toIso8601String(),
+            if (data['updatedAt'] != null)
+              'updatedAt': (data['updatedAt'] as Timestamp)
+                  .toDate()
+                  .toIso8601String(),
           });
         }
         return null; // User exists in Auth but not in Firestore (edge case)
@@ -52,6 +52,10 @@ class AuthRepositoryImpl implements AuthRepository {
           'createdAt': (data['createdAt'] as Timestamp)
               .toDate()
               .toIso8601String(),
+          if (data['updatedAt'] != null)
+            'updatedAt': (data['updatedAt'] as Timestamp)
+                .toDate()
+                .toIso8601String(),
         });
       }
       // Error getting current user
@@ -83,8 +87,11 @@ class AuthRepositoryImpl implements AuthRepository {
     String email,
     String password,
     String name,
+    String username,
+    String? phoneNumber,
   ) async {
     try {
+      // First, create the Firebase Auth account
       final result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -92,24 +99,49 @@ class AuthRepositoryImpl implements AuthRepository {
 
       if (result.user == null) throw Exception('Sign up failed');
 
-      final now = DateTime.now();
-      final userEntity = UserEntity(
-        id: result.user!.uid,
-        email: email,
-        name: name,
-        createdAt: now,
-      );
+      try {
+        // Now check if username is unique (user is authenticated)
+        final usernameCheck = await _firestore
+            .collection('users')
+            .where('username', isEqualTo: username.toLowerCase())
+            .limit(1)
+            .get();
 
-      // Save to Firestore
-      await _firestore.collection('users').doc(userEntity.id).set({
-        'email': email,
-        'name': name,
-        'phone': null,
-        'avatarUrl': null,
-        'createdAt': Timestamp.fromDate(now),
-      });
+        if (usernameCheck.docs.isNotEmpty) {
+          // Username is taken, delete the auth account and throw error
+          await result.user!.delete();
+          throw Exception('Username already taken');
+        }
 
-      return userEntity;
+        final now = DateTime.now();
+        final userEntity = UserEntity(
+          id: result.user!.uid,
+          email: email,
+          name: name,
+          username: username.toLowerCase(),
+          phoneNumber: phoneNumber,
+          createdAt: now,
+        );
+
+        // Save to Firestore
+        await _firestore.collection('users').doc(userEntity.id).set({
+          'email': email,
+          'name': name,
+          'username': username.toLowerCase(),
+          'phoneNumber': phoneNumber,
+          'avatarUrl': null,
+          'isSearchable': true,
+          'friends': [],
+          'createdAt': Timestamp.fromDate(now),
+          'updatedAt': null,
+        });
+
+        return userEntity;
+      } catch (e) {
+        // If anything fails after auth creation, delete the account
+        await result.user!.delete();
+        rethrow;
+      }
     } catch (e) {
       throw Exception('Failed to sign up: $e');
     }
@@ -118,6 +150,40 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      throw Exception('Failed to send password reset email: $e');
+    }
+  }
+
+  @override
+  Future<void> updatePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) {
+        throw Exception('No user logged in');
+      }
+
+      // Re-authenticate user
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // Update password
+      await user.updatePassword(newPassword);
+    } catch (e) {
+      throw Exception('Failed to update password: $e');
+    }
   }
 
   @override
@@ -149,19 +215,31 @@ class AuthRepositoryImpl implements AuthRepository {
       if (userEntity == null) {
         // New user, create record
         final now = DateTime.now();
+        final phoneNum = result.user!.phoneNumber ?? '';
+        // Generate username from phone or email
+        final defaultUsername = phoneNum.isNotEmpty
+            ? 'user_${phoneNum.replaceAll(RegExp(r'[^0-9]'), '')}'
+            : 'user_${result.user!.uid.substring(0, 8)}';
+
         userEntity = UserEntity(
           id: result.user!.uid,
           email: result.user!.email ?? '',
           name: '', // Name will need to be set later
+          username: defaultUsername,
+          phoneNumber: result.user!.phoneNumber,
           createdAt: now,
         );
 
         await _firestore.collection('users').doc(userEntity.id).set({
           'email': userEntity.email,
           'name': userEntity.name,
-          'phone': result.user!.phoneNumber,
+          'username': userEntity.username,
+          'phoneNumber': result.user!.phoneNumber,
           'avatarUrl': null,
+          'isSearchable': true,
+          'friends': [],
           'createdAt': Timestamp.fromDate(now),
+          'updatedAt': null,
         });
       }
 

@@ -11,9 +11,19 @@ _$UserEntityImpl _$$UserEntityImplFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       email: json['email'] as String,
       name: json['name'] as String,
-      phone: json['phone'] as String?,
+      username: json['username'] as String,
+      phoneNumber: json['phoneNumber'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
+      isSearchable: json['isSearchable'] as bool? ?? true,
+      friends:
+          (json['friends'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.parse(json['updatedAt'] as String),
     );
 
 Map<String, dynamic> _$$UserEntityImplToJson(_$UserEntityImpl instance) =>
@@ -21,7 +31,11 @@ Map<String, dynamic> _$$UserEntityImplToJson(_$UserEntityImpl instance) =>
       'id': instance.id,
       'email': instance.email,
       'name': instance.name,
-      'phone': instance.phone,
+      'username': instance.username,
+      'phoneNumber': instance.phoneNumber,
       'avatarUrl': instance.avatarUrl,
+      'isSearchable': instance.isSearchable,
+      'friends': instance.friends,
       'createdAt': instance.createdAt.toIso8601String(),
+      'updatedAt': instance.updatedAt?.toIso8601String(),
     };

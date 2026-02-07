@@ -9,9 +9,13 @@ class UserEntity with _$UserEntity {
     required String id,
     required String email,
     required String name,
-    String? phone,
+    required String username,
+    String? phoneNumber,
     String? avatarUrl,
+    @Default(true) bool isSearchable,
+    @Default([]) List<String> friends,
     required DateTime createdAt,
+    DateTime? updatedAt,
   }) = _UserEntity;
 
   factory UserEntity.fromJson(Map<String, dynamic> json) =>

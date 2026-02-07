@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/form_validators.dart';
 import '../providers/auth_providers.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -16,12 +17,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  bool _obscurePassword = true;
+  PasswordStrength _passwordStrength = PasswordStrength.weak;
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _usernameController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -34,7 +42,39 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             _emailController.text.trim(),
             _passwordController.text.trim(),
             _nameController.text.trim(),
+            _usernameController.text.trim(),
+            _phoneController.text.trim().isEmpty
+                ? null
+                : _phoneController.text.trim(),
           );
+    }
+  }
+
+  void _onPasswordChanged(String value) {
+    setState(() {
+      _passwordStrength = FormValidators.getPasswordStrength(value);
+    });
+  }
+
+  Color _getStrengthColor() {
+    switch (_passwordStrength) {
+      case PasswordStrength.weak:
+        return Colors.red;
+      case PasswordStrength.medium:
+        return Colors.orange;
+      case PasswordStrength.strong:
+        return Colors.green;
+    }
+  }
+
+  String _getStrengthText() {
+    switch (_passwordStrength) {
+      case PasswordStrength.weak:
+        return 'Weak';
+      case PasswordStrength.medium:
+        return 'Medium';
+      case PasswordStrength.strong:
+        return 'Strong';
     }
   }
 
@@ -82,55 +122,126 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 48),
+
+                  // Name field (required)
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      hintText: 'Full Name',
+                      labelText: 'Full Name *',
+                      hintText: 'Enter your full name',
                       prefixIcon: Icon(Icons.person_outline),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Name is required';
-                      }
-                      return null;
-                    },
+                    textCapitalization: TextCapitalization.words,
+                    validator: FormValidators.validateName,
                   ),
                   const SizedBox(height: 16),
+
+                  // Email field (required)
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
-                      hintText: 'Email address',
+                      labelText: 'Email *',
+                      hintText: 'Enter your email address',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Email is required';
+                    validator: FormValidators.validateEmail,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Username field (required)
+                  TextFormField(
+                    controller: _usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Username *',
+                      hintText: 'Choose a unique username',
+                      prefixIcon: Icon(Icons.alternate_email),
+                      helperText:
+                          'Lowercase letters, numbers, and underscores only',
+                    ),
+                    validator: FormValidators.validateUsername,
+                    onChanged: (value) {
+                      // Auto-convert to lowercase
+                      if (value != value.toLowerCase()) {
+                        _usernameController.value = TextEditingValue(
+                          text: value.toLowerCase(),
+                          selection: _usernameController.selection,
+                        );
                       }
-                      if (!value.contains('@')) {
-                        return 'Invalid email';
-                      }
-                      return null;
                     },
                   ),
                   const SizedBox(height: 16),
+
+                  // Phone field (optional)
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number',
+                      hintText: 'Optional',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                      helperText: 'Helps friends find you',
+                    ),
+                    keyboardType: TextInputType.phone,
+                    validator: FormValidators.validatePhone,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Password field (required)
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
-                      hintText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outline),
+                    decoration: InputDecoration(
+                      labelText: 'Password *',
+                      hintText: 'At least 8 characters',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
-                    obscureText: true,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password is required';
-                      }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
+                    obscureText: _obscurePassword,
+                    validator: FormValidators.validatePassword,
+                    onChanged: _onPasswordChanged,
                   ),
+
+                  // Password strength indicator
+                  if (_passwordController.text.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: LinearProgressIndicator(
+                            value: _passwordStrength == PasswordStrength.weak
+                                ? 0.33
+                                : _passwordStrength == PasswordStrength.medium
+                                ? 0.66
+                                : 1.0,
+                            backgroundColor: Colors.grey[300],
+                            valueColor: AlwaysStoppedAnimation(
+                              _getStrengthColor(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getStrengthText(),
+                          style: TextStyle(
+                            color: _getStrengthColor(),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: state.isLoading ? null : _submit,

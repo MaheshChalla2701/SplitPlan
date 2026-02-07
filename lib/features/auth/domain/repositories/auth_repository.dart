@@ -7,8 +7,12 @@ abstract class AuthRepository {
     String email,
     String password,
     String name,
+    String username,
+    String? phoneNumber,
   );
   Future<void> signOut();
+  Future<void> sendPasswordResetEmail(String email);
+  Future<void> updatePassword(String currentPassword, String newPassword);
   Stream<UserEntity?> get authStateChanges;
   Future<UserEntity?> getCurrentUser();
   Future<void> verifyPhoneNumber({

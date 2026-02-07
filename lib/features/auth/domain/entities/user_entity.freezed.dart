@@ -24,9 +24,13 @@ mixin _$UserEntity {
   String get id => throw _privateConstructorUsedError;
   String get email => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
-  String? get phone => throw _privateConstructorUsedError;
+  String get username => throw _privateConstructorUsedError;
+  String? get phoneNumber => throw _privateConstructorUsedError;
   String? get avatarUrl => throw _privateConstructorUsedError;
+  bool get isSearchable => throw _privateConstructorUsedError;
+  List<String> get friends => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
+  DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this UserEntity to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -49,9 +53,13 @@ abstract class $UserEntityCopyWith<$Res> {
     String id,
     String email,
     String name,
-    String? phone,
+    String username,
+    String? phoneNumber,
     String? avatarUrl,
+    bool isSearchable,
+    List<String> friends,
     DateTime createdAt,
+    DateTime? updatedAt,
   });
 }
 
@@ -73,9 +81,13 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
     Object? id = null,
     Object? email = null,
     Object? name = null,
-    Object? phone = freezed,
+    Object? username = null,
+    Object? phoneNumber = freezed,
     Object? avatarUrl = freezed,
+    Object? isSearchable = null,
+    Object? friends = null,
     Object? createdAt = null,
+    Object? updatedAt = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -91,18 +103,34 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
                 ? _value.name
                 : name // ignore: cast_nullable_to_non_nullable
                       as String,
-            phone: freezed == phone
-                ? _value.phone
-                : phone // ignore: cast_nullable_to_non_nullable
+            username: null == username
+                ? _value.username
+                : username // ignore: cast_nullable_to_non_nullable
+                      as String,
+            phoneNumber: freezed == phoneNumber
+                ? _value.phoneNumber
+                : phoneNumber // ignore: cast_nullable_to_non_nullable
                       as String?,
             avatarUrl: freezed == avatarUrl
                 ? _value.avatarUrl
                 : avatarUrl // ignore: cast_nullable_to_non_nullable
                       as String?,
+            isSearchable: null == isSearchable
+                ? _value.isSearchable
+                : isSearchable // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            friends: null == friends
+                ? _value.friends
+                : friends // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
                       as DateTime,
+            updatedAt: freezed == updatedAt
+                ? _value.updatedAt
+                : updatedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
           )
           as $Val,
     );
@@ -122,9 +150,13 @@ abstract class _$$UserEntityImplCopyWith<$Res>
     String id,
     String email,
     String name,
-    String? phone,
+    String username,
+    String? phoneNumber,
     String? avatarUrl,
+    bool isSearchable,
+    List<String> friends,
     DateTime createdAt,
+    DateTime? updatedAt,
   });
 }
 
@@ -145,9 +177,13 @@ class __$$UserEntityImplCopyWithImpl<$Res>
     Object? id = null,
     Object? email = null,
     Object? name = null,
-    Object? phone = freezed,
+    Object? username = null,
+    Object? phoneNumber = freezed,
     Object? avatarUrl = freezed,
+    Object? isSearchable = null,
+    Object? friends = null,
     Object? createdAt = null,
+    Object? updatedAt = freezed,
   }) {
     return _then(
       _$UserEntityImpl(
@@ -163,18 +199,34 @@ class __$$UserEntityImplCopyWithImpl<$Res>
             ? _value.name
             : name // ignore: cast_nullable_to_non_nullable
                   as String,
-        phone: freezed == phone
-            ? _value.phone
-            : phone // ignore: cast_nullable_to_non_nullable
+        username: null == username
+            ? _value.username
+            : username // ignore: cast_nullable_to_non_nullable
+                  as String,
+        phoneNumber: freezed == phoneNumber
+            ? _value.phoneNumber
+            : phoneNumber // ignore: cast_nullable_to_non_nullable
                   as String?,
         avatarUrl: freezed == avatarUrl
             ? _value.avatarUrl
             : avatarUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        isSearchable: null == isSearchable
+            ? _value.isSearchable
+            : isSearchable // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        friends: null == friends
+            ? _value._friends
+            : friends // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
                   as DateTime,
+        updatedAt: freezed == updatedAt
+            ? _value.updatedAt
+            : updatedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
       ),
     );
   }
@@ -187,10 +239,14 @@ class _$UserEntityImpl implements _UserEntity {
     required this.id,
     required this.email,
     required this.name,
-    this.phone,
+    required this.username,
+    this.phoneNumber,
     this.avatarUrl,
+    this.isSearchable = true,
+    final List<String> friends = const [],
     required this.createdAt,
-  });
+    this.updatedAt,
+  }) : _friends = friends;
 
   factory _$UserEntityImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserEntityImplFromJson(json);
@@ -202,15 +258,31 @@ class _$UserEntityImpl implements _UserEntity {
   @override
   final String name;
   @override
-  final String? phone;
+  final String username;
+  @override
+  final String? phoneNumber;
   @override
   final String? avatarUrl;
   @override
+  @JsonKey()
+  final bool isSearchable;
+  final List<String> _friends;
+  @override
+  @JsonKey()
+  List<String> get friends {
+    if (_friends is EqualUnmodifiableListView) return _friends;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_friends);
+  }
+
+  @override
   final DateTime createdAt;
+  @override
+  final DateTime? updatedAt;
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, name: $name, phone: $phone, avatarUrl: $avatarUrl, createdAt: $createdAt)';
+    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, isSearchable: $isSearchable, friends: $friends, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -221,17 +293,36 @@ class _$UserEntityImpl implements _UserEntity {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.email, email) || other.email == email) &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.phone, phone) || other.phone == phone) &&
+            (identical(other.username, username) ||
+                other.username == username) &&
+            (identical(other.phoneNumber, phoneNumber) ||
+                other.phoneNumber == phoneNumber) &&
             (identical(other.avatarUrl, avatarUrl) ||
                 other.avatarUrl == avatarUrl) &&
+            (identical(other.isSearchable, isSearchable) ||
+                other.isSearchable == isSearchable) &&
+            const DeepCollectionEquality().equals(other._friends, _friends) &&
             (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt));
+                other.createdAt == createdAt) &&
+            (identical(other.updatedAt, updatedAt) ||
+                other.updatedAt == updatedAt));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, email, name, phone, avatarUrl, createdAt);
+  int get hashCode => Object.hash(
+    runtimeType,
+    id,
+    email,
+    name,
+    username,
+    phoneNumber,
+    avatarUrl,
+    isSearchable,
+    const DeepCollectionEquality().hash(_friends),
+    createdAt,
+    updatedAt,
+  );
 
   /// Create a copy of UserEntity
   /// with the given fields replaced by the non-null parameter values.
@@ -252,9 +343,13 @@ abstract class _UserEntity implements UserEntity {
     required final String id,
     required final String email,
     required final String name,
-    final String? phone,
+    required final String username,
+    final String? phoneNumber,
     final String? avatarUrl,
+    final bool isSearchable,
+    final List<String> friends,
     required final DateTime createdAt,
+    final DateTime? updatedAt,
   }) = _$UserEntityImpl;
 
   factory _UserEntity.fromJson(Map<String, dynamic> json) =
@@ -267,11 +362,19 @@ abstract class _UserEntity implements UserEntity {
   @override
   String get name;
   @override
-  String? get phone;
+  String get username;
+  @override
+  String? get phoneNumber;
   @override
   String? get avatarUrl;
   @override
+  bool get isSearchable;
+  @override
+  List<String> get friends;
+  @override
   DateTime get createdAt;
+  @override
+  DateTime? get updatedAt;
 
   /// Create a copy of UserEntity
   /// with the given fields replaced by the non-null parameter values.

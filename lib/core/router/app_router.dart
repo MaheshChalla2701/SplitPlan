@@ -7,8 +7,12 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/phone_input_screen.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/expenses/presentation/screens/add_expense_screen.dart';
+import '../../features/friends/presentation/screens/friend_detail_screen.dart';
+import '../../features/friends/presentation/screens/friend_search_screen.dart';
 import '../../features/groups/presentation/screens/create_group_screen.dart';
 import '../../features/groups/presentation/screens/group_details_screen.dart';
 import '../../features/groups/presentation/screens/home_screen.dart';
@@ -33,6 +37,7 @@ GoRouter goRouter(Ref ref) {
       final isAuthRoute =
           isLogin ||
           state.uri.toString() == '/signup' ||
+          state.uri.toString() == '/auth/forgot-password' ||
           state.uri.toString() == '/phone-login' ||
           state.uri.toString() == '/otp-verify';
 
@@ -63,6 +68,10 @@ GoRouter goRouter(Ref ref) {
         builder: (context, state) => const PhoneInputScreen(),
       ),
       GoRoute(
+        path: '/auth/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
         path: '/otp-verify',
         builder: (context, state) {
           final verificationId = state.extra as String;
@@ -70,6 +79,21 @@ GoRouter goRouter(Ref ref) {
         },
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/friends/search',
+        builder: (context, state) => const FriendSearchScreen(),
+      ),
+      GoRoute(
+        path: '/friends/:id',
+        builder: (context, state) {
+          final friendId = state.pathParameters['id']!;
+          return FriendDetailScreen(friendId: friendId);
+        },
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
       GoRoute(
         path: '/create-group',
         builder: (context, state) => const CreateGroupScreen(),

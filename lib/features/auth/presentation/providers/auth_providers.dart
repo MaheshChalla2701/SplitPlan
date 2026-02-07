@@ -55,12 +55,18 @@ class SignupController extends _$SignupController {
     return const AsyncValue.data(null);
   }
 
-  Future<void> signUp(String email, String password, String name) async {
+  Future<void> signUp(
+    String email,
+    String password,
+    String name,
+    String username,
+    String? phoneNumber,
+  ) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
       () => ref
           .read(authRepositoryProvider)
-          .signUpWithEmail(email, password, name),
+          .signUpWithEmail(email, password, name, username, phoneNumber),
     );
   }
 }
