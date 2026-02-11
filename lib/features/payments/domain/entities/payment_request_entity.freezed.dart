@@ -25,7 +25,7 @@ mixin _$PaymentRequestEntity {
   String get fromUserId => throw _privateConstructorUsedError;
   String get toUserId => throw _privateConstructorUsedError;
   double get amount => throw _privateConstructorUsedError;
-  String get description => throw _privateConstructorUsedError;
+  String? get description => throw _privateConstructorUsedError;
   PaymentRequestType get type => throw _privateConstructorUsedError;
   PaymentRequestStatus get status => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -52,7 +52,7 @@ abstract class $PaymentRequestEntityCopyWith<$Res> {
     String fromUserId,
     String toUserId,
     double amount,
-    String description,
+    String? description,
     PaymentRequestType type,
     PaymentRequestStatus status,
     DateTime createdAt,
@@ -81,7 +81,7 @@ class _$PaymentRequestEntityCopyWithImpl<
     Object? fromUserId = null,
     Object? toUserId = null,
     Object? amount = null,
-    Object? description = null,
+    Object? description = freezed,
     Object? type = null,
     Object? status = null,
     Object? createdAt = null,
@@ -104,10 +104,10 @@ class _$PaymentRequestEntityCopyWithImpl<
                 ? _value.amount
                 : amount // ignore: cast_nullable_to_non_nullable
                       as double,
-            description: null == description
+            description: freezed == description
                 ? _value.description
                 : description // ignore: cast_nullable_to_non_nullable
-                      as String,
+                      as String?,
             type: null == type
                 ? _value.type
                 : type // ignore: cast_nullable_to_non_nullable
@@ -140,7 +140,7 @@ abstract class _$$PaymentRequestEntityImplCopyWith<$Res>
     String fromUserId,
     String toUserId,
     double amount,
-    String description,
+    String? description,
     PaymentRequestType type,
     PaymentRequestStatus status,
     DateTime createdAt,
@@ -165,7 +165,7 @@ class __$$PaymentRequestEntityImplCopyWithImpl<$Res>
     Object? fromUserId = null,
     Object? toUserId = null,
     Object? amount = null,
-    Object? description = null,
+    Object? description = freezed,
     Object? type = null,
     Object? status = null,
     Object? createdAt = null,
@@ -188,10 +188,10 @@ class __$$PaymentRequestEntityImplCopyWithImpl<$Res>
             ? _value.amount
             : amount // ignore: cast_nullable_to_non_nullable
                   as double,
-        description: null == description
+        description: freezed == description
             ? _value.description
             : description // ignore: cast_nullable_to_non_nullable
-                  as String,
+                  as String?,
         type: null == type
             ? _value.type
             : type // ignore: cast_nullable_to_non_nullable
@@ -217,7 +217,7 @@ class _$PaymentRequestEntityImpl implements _PaymentRequestEntity {
     required this.fromUserId,
     required this.toUserId,
     required this.amount,
-    required this.description,
+    this.description,
     required this.type,
     required this.status,
     required this.createdAt,
@@ -235,7 +235,7 @@ class _$PaymentRequestEntityImpl implements _PaymentRequestEntity {
   @override
   final double amount;
   @override
-  final String description;
+  final String? description;
   @override
   final PaymentRequestType type;
   @override
@@ -305,7 +305,7 @@ abstract class _PaymentRequestEntity implements PaymentRequestEntity {
     required final String fromUserId,
     required final String toUserId,
     required final double amount,
-    required final String description,
+    final String? description,
     required final PaymentRequestType type,
     required final PaymentRequestStatus status,
     required final DateTime createdAt,
@@ -323,7 +323,7 @@ abstract class _PaymentRequestEntity implements PaymentRequestEntity {
   @override
   double get amount;
   @override
-  String get description;
+  String? get description;
   @override
   PaymentRequestType get type;
   @override

@@ -9,11 +9,14 @@ import '../../features/auth/presentation/screens/otp_verification_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
+import '../../features/auth/presentation/screens/change_password_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/expenses/presentation/screens/add_expense_screen.dart';
 import '../../features/friends/presentation/screens/friend_detail_screen.dart';
 import '../../features/friends/presentation/screens/friend_search_screen.dart';
+import '../../features/friends/presentation/screens/new_chat_screen.dart';
 import '../../features/groups/presentation/screens/create_group_screen.dart';
+import '../../features/payments/presentation/screens/create_payment_request_screen.dart';
 import '../../features/groups/presentation/screens/group_details_screen.dart';
 import '../../features/groups/presentation/screens/home_screen.dart';
 import '../../features/settlements/presentation/screens/settle_up_screen.dart';
@@ -84,11 +87,28 @@ GoRouter goRouter(Ref ref) {
         builder: (context, state) => const FriendSearchScreen(),
       ),
       GoRoute(
+        path: '/new-chat',
+        builder: (context, state) => const NewChatScreen(),
+      ),
+      GoRoute(
         path: '/friends/:id',
         builder: (context, state) {
           final friendId = state.pathParameters['id']!;
           return FriendDetailScreen(friendId: friendId);
         },
+        routes: [
+          GoRoute(
+            path: 'create-request',
+            builder: (context, state) {
+              final friendId = state.pathParameters['id']!;
+              return CreatePaymentRequestScreen(friendId: friendId);
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/change-password',
+        builder: (context, state) => const ChangePasswordScreen(),
       ),
       GoRoute(
         path: '/profile',

@@ -10,7 +10,7 @@ class PaymentRequestEntity with _$PaymentRequestEntity {
     required String fromUserId,
     required String toUserId,
     required double amount,
-    required String description,
+    String? description,
     required PaymentRequestType type,
     required PaymentRequestStatus status,
     required DateTime createdAt,
@@ -25,4 +25,4 @@ enum PaymentRequestType {
   receive, // I want to RECEIVE money from someone
 }
 
-enum PaymentRequestStatus { pending, paid, rejected }
+enum PaymentRequestStatus { pending, accepted, paid, rejected }

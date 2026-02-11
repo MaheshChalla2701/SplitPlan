@@ -7,7 +7,7 @@ part of 'payment_request_providers.dart';
 // **************************************************************************
 
 String _$paymentRequestRepositoryHash() =>
-    r'6210dd51a9951fed87045803a1e9c571c36ef675';
+    r'c62c4c14eb534b59bb2dac763c5ddbe1831bed55';
 
 /// See also [paymentRequestRepository].
 @ProviderFor(paymentRequestRepository)

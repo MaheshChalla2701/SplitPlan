@@ -49,9 +49,21 @@ class PaymentRequestRepositoryImpl implements PaymentRequestRepository {
 
   @override
   Stream<List<PaymentRequestEntity>> getPaymentRequests(String userId) {
+    // Combine two queries to get all requests where user is sender or receiver
+    // Use a simple merge approach since Dart's StreamGroup isn't directly available without async package
+    // Alternatively, we can just listen to both and merge in memory.
+    // But a cleaner way without extra packages is to query OR if firestore supported it (it does with 'or' queries but requires index).
+    // Let's use the 'or' query if possible, or manual merge.
+
+    // Firestore 'or' query:
     return _firestore
         .collection('payment_requests')
-        .where('toUserId', isEqualTo: userId)
+        .where(
+          Filter.or(
+            Filter('fromUserId', isEqualTo: userId),
+            Filter('toUserId', isEqualTo: userId),
+          ),
+        )
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
