@@ -10,13 +10,25 @@ class PaymentRequestRepositoryImpl implements PaymentRequestRepository {
   @override
   Future<void> createPaymentRequest(PaymentRequestEntity request) async {
     try {
+      var status = request.status;
+
+      // Check if target user is a manual friend to auto-accept
+      final toUserDoc = await _firestore
+          .collection('users')
+          .doc(request.toUserId)
+          .get();
+
+      if (toUserDoc.exists && (toUserDoc.data()?['isManual'] ?? false)) {
+        status = PaymentRequestStatus.accepted;
+      }
+
       await _firestore.collection('payment_requests').add({
         'fromUserId': request.fromUserId,
         'toUserId': request.toUserId,
         'amount': request.amount,
         'description': request.description,
         'type': request.type.name,
-        'status': request.status.name,
+        'status': status.name,
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {

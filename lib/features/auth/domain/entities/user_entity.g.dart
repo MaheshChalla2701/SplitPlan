@@ -15,6 +15,8 @@ _$UserEntityImpl _$$UserEntityImplFromJson(Map<String, dynamic> json) =>
       phoneNumber: json['phoneNumber'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
       isSearchable: json['isSearchable'] as bool? ?? true,
+      isManual: json['isManual'] as bool? ?? false,
+      ownerId: json['ownerId'] as String?,
       friends:
           (json['friends'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -35,6 +37,8 @@ Map<String, dynamic> _$$UserEntityImplToJson(_$UserEntityImpl instance) =>
       'phoneNumber': instance.phoneNumber,
       'avatarUrl': instance.avatarUrl,
       'isSearchable': instance.isSearchable,
+      'isManual': instance.isManual,
+      'ownerId': instance.ownerId,
       'friends': instance.friends,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),

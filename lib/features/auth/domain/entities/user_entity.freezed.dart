@@ -28,6 +28,8 @@ mixin _$UserEntity {
   String? get phoneNumber => throw _privateConstructorUsedError;
   String? get avatarUrl => throw _privateConstructorUsedError;
   bool get isSearchable => throw _privateConstructorUsedError;
+  bool get isManual => throw _privateConstructorUsedError;
+  String? get ownerId => throw _privateConstructorUsedError;
   List<String> get friends => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
@@ -57,6 +59,8 @@ abstract class $UserEntityCopyWith<$Res> {
     String? phoneNumber,
     String? avatarUrl,
     bool isSearchable,
+    bool isManual,
+    String? ownerId,
     List<String> friends,
     DateTime createdAt,
     DateTime? updatedAt,
@@ -85,6 +89,8 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
     Object? phoneNumber = freezed,
     Object? avatarUrl = freezed,
     Object? isSearchable = null,
+    Object? isManual = null,
+    Object? ownerId = freezed,
     Object? friends = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
@@ -119,6 +125,14 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
                 ? _value.isSearchable
                 : isSearchable // ignore: cast_nullable_to_non_nullable
                       as bool,
+            isManual: null == isManual
+                ? _value.isManual
+                : isManual // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            ownerId: freezed == ownerId
+                ? _value.ownerId
+                : ownerId // ignore: cast_nullable_to_non_nullable
+                      as String?,
             friends: null == friends
                 ? _value.friends
                 : friends // ignore: cast_nullable_to_non_nullable
@@ -154,6 +168,8 @@ abstract class _$$UserEntityImplCopyWith<$Res>
     String? phoneNumber,
     String? avatarUrl,
     bool isSearchable,
+    bool isManual,
+    String? ownerId,
     List<String> friends,
     DateTime createdAt,
     DateTime? updatedAt,
@@ -181,6 +197,8 @@ class __$$UserEntityImplCopyWithImpl<$Res>
     Object? phoneNumber = freezed,
     Object? avatarUrl = freezed,
     Object? isSearchable = null,
+    Object? isManual = null,
+    Object? ownerId = freezed,
     Object? friends = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
@@ -215,6 +233,14 @@ class __$$UserEntityImplCopyWithImpl<$Res>
             ? _value.isSearchable
             : isSearchable // ignore: cast_nullable_to_non_nullable
                   as bool,
+        isManual: null == isManual
+            ? _value.isManual
+            : isManual // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        ownerId: freezed == ownerId
+            ? _value.ownerId
+            : ownerId // ignore: cast_nullable_to_non_nullable
+                  as String?,
         friends: null == friends
             ? _value._friends
             : friends // ignore: cast_nullable_to_non_nullable
@@ -243,6 +269,8 @@ class _$UserEntityImpl implements _UserEntity {
     this.phoneNumber,
     this.avatarUrl,
     this.isSearchable = true,
+    this.isManual = false,
+    this.ownerId,
     final List<String> friends = const [],
     required this.createdAt,
     this.updatedAt,
@@ -266,6 +294,11 @@ class _$UserEntityImpl implements _UserEntity {
   @override
   @JsonKey()
   final bool isSearchable;
+  @override
+  @JsonKey()
+  final bool isManual;
+  @override
+  final String? ownerId;
   final List<String> _friends;
   @override
   @JsonKey()
@@ -282,7 +315,7 @@ class _$UserEntityImpl implements _UserEntity {
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, isSearchable: $isSearchable, friends: $friends, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, isSearchable: $isSearchable, isManual: $isManual, ownerId: $ownerId, friends: $friends, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -301,6 +334,9 @@ class _$UserEntityImpl implements _UserEntity {
                 other.avatarUrl == avatarUrl) &&
             (identical(other.isSearchable, isSearchable) ||
                 other.isSearchable == isSearchable) &&
+            (identical(other.isManual, isManual) ||
+                other.isManual == isManual) &&
+            (identical(other.ownerId, ownerId) || other.ownerId == ownerId) &&
             const DeepCollectionEquality().equals(other._friends, _friends) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -319,6 +355,8 @@ class _$UserEntityImpl implements _UserEntity {
     phoneNumber,
     avatarUrl,
     isSearchable,
+    isManual,
+    ownerId,
     const DeepCollectionEquality().hash(_friends),
     createdAt,
     updatedAt,
@@ -347,6 +385,8 @@ abstract class _UserEntity implements UserEntity {
     final String? phoneNumber,
     final String? avatarUrl,
     final bool isSearchable,
+    final bool isManual,
+    final String? ownerId,
     final List<String> friends,
     required final DateTime createdAt,
     final DateTime? updatedAt,
@@ -369,6 +409,10 @@ abstract class _UserEntity implements UserEntity {
   String? get avatarUrl;
   @override
   bool get isSearchable;
+  @override
+  bool get isManual;
+  @override
+  String? get ownerId;
   @override
   List<String> get friends;
   @override

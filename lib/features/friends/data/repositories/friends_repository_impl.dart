@@ -263,4 +263,256 @@ class FriendsRepositoryImpl implements FriendsRepository {
       return null;
     }
   }
+
+  @override
+  Future<void> createManualFriend(String name) async {
+    try {
+      final now = DateTime.now();
+      final manualFriendDoc = _firestore.collection('users').doc();
+      final userId = _currentUserId;
+
+      // 1. Create the manual friend user document
+      await manualFriendDoc.set({
+        'name': name,
+        'username': 'manual_${manualFriendDoc.id.substring(0, 8)}',
+        'email': 'manual_${manualFriendDoc.id}@splitplan.manual',
+        'isManual': true,
+        'isSearchable': false,
+        'ownerId': userId,
+        'friends': [userId],
+        'createdAt': Timestamp.fromDate(now),
+        'updatedAt': null,
+        'avatarUrl': null,
+      });
+
+      // 2. Add manual friend to current user's friends list
+      await _firestore.collection('users').doc(userId).update({
+        'friends': FieldValue.arrayUnion([manualFriendDoc.id]),
+      });
+
+      // 3. Create an automatically accepted friendship
+      await _firestore.collection('friendships').add({
+        'userId': userId,
+        'friendId': manualFriendDoc.id,
+        'status': 'accepted',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to create manual friend: $e');
+    }
+  }
+
+  @override
+  Future<void> mergeManualFriendToReal(
+    String manualFriendId,
+    String realUserId,
+  ) async {
+    try {
+      final userId = _currentUserId;
+
+      // 1. Get all payment requests involving the manual friend
+      final requestsFromQuery = await _firestore
+          .collection('payment_requests')
+          .where('fromUserId', isEqualTo: manualFriendId)
+          .get();
+
+      final requestsToQuery = await _firestore
+          .collection('payment_requests')
+          .where('toUserId', isEqualTo: manualFriendId)
+          .get();
+
+      // 2. Perform updates in a batch for atomicity
+      final batch = _firestore.batch();
+
+      // Update requests where manual friend was the sender
+      for (final doc in requestsFromQuery.docs) {
+        batch.update(doc.reference, {'fromUserId': realUserId});
+      }
+
+      // Update requests where manual friend was the receiver
+      for (final doc in requestsToQuery.docs) {
+        batch.update(doc.reference, {'toUserId': realUserId});
+      }
+
+      // 3. Update current user's friends list: remove manual, add real
+      batch.update(_firestore.collection('users').doc(userId), {
+        'friends': FieldValue.arrayRemove([manualFriendId]),
+      });
+      batch.update(_firestore.collection('users').doc(userId), {
+        'friends': FieldValue.arrayUnion([realUserId]),
+      });
+
+      // 4. Update real user's friends list: add current user
+      batch.update(_firestore.collection('users').doc(realUserId), {
+        'friends': FieldValue.arrayUnion([userId]),
+      });
+
+      // 5. Delete the manual friend user document
+      batch.delete(_firestore.collection('users').doc(manualFriendId));
+
+      // 6. Delete the friendship document for the manual friend
+      final manualFriendshipQuery = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: userId)
+          .where('friendId', isEqualTo: manualFriendId)
+          .get();
+
+      for (final doc in manualFriendshipQuery.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // 7. Create/Update friendship with real user
+      final realFriendshipQuery = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: userId)
+          .where('friendId', isEqualTo: realUserId)
+          .get();
+
+      if (realFriendshipQuery.docs.isEmpty) {
+        final newFriendshipRef = _firestore.collection('friendships').doc();
+        batch.set(newFriendshipRef, {
+          'userId': userId,
+          'friendId': realUserId,
+          'status': 'accepted',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to merge manual friend: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteFriend(String friendId) async {
+    try {
+      final userId = _currentUserId;
+
+      // 1. Get friend data to check if manual
+      final friendDoc = await _firestore
+          .collection('users')
+          .doc(friendId)
+          .get();
+      if (!friendDoc.exists) throw Exception('Friend not found');
+
+      final friendData = friendDoc.data()!;
+      final isManual = friendData['isManual'] == true;
+
+      // 2. Perform checks for Real Users
+      if (!isManual) {
+        // Calculate Net Balance
+        final requestsFrom = await _firestore
+            .collection('payment_requests')
+            .where('fromUserId', isEqualTo: friendId)
+            .where('toUserId', isEqualTo: userId)
+            .where('status', whereIn: ['accepted', 'paid'])
+            .get();
+
+        final requestsTo = await _firestore
+            .collection('payment_requests')
+            .where('fromUserId', isEqualTo: userId)
+            .where('toUserId', isEqualTo: friendId)
+            .where('status', whereIn: ['accepted', 'paid'])
+            .get();
+
+        double toPay = 0;
+        double toReceive = 0;
+
+        for (final doc in requestsFrom.docs) {
+          final data = doc.data();
+          final amount = (data['amount'] as num).toDouble();
+          final type = data['type'];
+          if (type == 'receive' || type == 'settle') {
+            toPay += amount;
+          } else {
+            toReceive += amount;
+          }
+        }
+
+        for (final doc in requestsTo.docs) {
+          final data = doc.data();
+          final amount = (data['amount'] as num).toDouble();
+          final type = data['type'];
+          if (type == 'receive' || type == 'settle') {
+            toReceive += amount;
+          } else {
+            toPay += amount;
+          }
+        }
+
+        final netBalance = toReceive - toPay;
+
+        // If user owes money (Net Balance < 0), block deletion
+        if (netBalance < 0) {
+          throw Exception('Cannot delete friend while you owe them money.');
+        }
+      }
+
+      // 3. Prepare Batch
+      final batch = _firestore.batch();
+
+      // 4. Delete Transaction History (All requests between users)
+      final allRequestsFrom = await _firestore
+          .collection('payment_requests')
+          .where('fromUserId', isEqualTo: friendId)
+          .where('toUserId', isEqualTo: userId)
+          .get();
+
+      final allRequestsTo = await _firestore
+          .collection('payment_requests')
+          .where('fromUserId', isEqualTo: userId)
+          .where('toUserId', isEqualTo: friendId)
+          .get();
+
+      for (final doc in allRequestsFrom.docs) batch.delete(doc.reference);
+      for (final doc in allRequestsTo.docs) batch.delete(doc.reference);
+
+      // 5. Handle User & Friendship Deletion
+      if (isManual) {
+        // Delete manual user doc
+        batch.delete(_firestore.collection('users').doc(friendId));
+
+        // Remove from current user's friends list
+        batch.update(_firestore.collection('users').doc(userId), {
+          'friends': FieldValue.arrayRemove([friendId]),
+        });
+      } else {
+        // Real User: Mutual Deletion
+
+        // Remove from current user's list
+        batch.update(_firestore.collection('users').doc(userId), {
+          'friends': FieldValue.arrayRemove([friendId]),
+        });
+
+        // Remove current user from friend's list
+        batch.update(_firestore.collection('users').doc(friendId), {
+          'friends': FieldValue.arrayRemove([userId]),
+        });
+      }
+
+      // 6. Delete Friendship Document
+      // We query both directions specifically to satisfy Firestore security rules
+      // (The previous whereIn query was too broad)
+      final friendshipAsSender = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: userId)
+          .where('friendId', isEqualTo: friendId)
+          .get();
+
+      final friendshipAsReceiver = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: friendId)
+          .where('friendId', isEqualTo: userId)
+          .get();
+
+      for (final doc in friendshipAsSender.docs) batch.delete(doc.reference);
+      for (final doc in friendshipAsReceiver.docs) batch.delete(doc.reference);
+
+      // 7. Commit
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to delete friend: $e');
+    }
+  }
 }

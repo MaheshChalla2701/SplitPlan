@@ -35,6 +35,7 @@ Map<String, dynamic> _$$PaymentRequestEntityImplToJson(
 const _$PaymentRequestTypeEnumMap = {
   PaymentRequestType.pay: 'pay',
   PaymentRequestType.receive: 'receive',
+  PaymentRequestType.settle: 'settle',
 };
 
 const _$PaymentRequestStatusEnumMap = {

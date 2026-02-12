@@ -4,132 +4,160 @@ import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
+import '../../../auth/domain/entities/user_entity.dart';
 import '../../../payments/domain/entities/payment_request_entity.dart';
 import '../../../payments/presentation/providers/payment_request_providers.dart';
 import '../providers/group_providers.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final userAsync = ref.watch(authStateProvider);
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _isSelectionMode = false;
+  final Set<String> _selectedIds = {};
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+        if (_selectedIds.isEmpty) {
+          _isSelectionMode = false;
+        }
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _enterSelectionMode(String id) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIds.add(id);
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  Future<void> _deleteSelectedFriends() async {
+    final idsToDelete = _selectedIds.toList();
+
+    // Show confirmation
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${idsToDelete.length} selected?'),
+        content: const Text(
+          'This will permanently delete manual friends and remove real friends. Transaction history will be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      for (final id in idsToDelete) {
+        await ref
+            .read(deleteFriendControllerProvider.notifier)
+            .deleteFriend(id);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chats deleted successfully')),
+        );
+        _exitSelectionMode();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final friendsAsync = ref.watch(userFriendsProvider);
     final groupsAsync = ref.watch(userGroupsProvider);
     final paymentRequestsAsync = ref.watch(userPaymentRequestsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SplitPlan'),
-        centerTitle: true,
-
-        actions: [
-          IconButton(
-            onPressed: () {
-              // Show notifications bottom sheet
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                useSafeArea: true,
-                builder: (context) => _buildNotificationsSheet(context, ref),
-              );
-            },
-            icon: const Badge(
-              // TODO: Wire up real pending count if needed, or just show dot
-              label: Text('!'),
-              isLabelVisible: false,
-              child: Icon(Icons.notifications_outlined),
-            ),
-            tooltip: 'Notifications',
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.account_circle),
-            tooltip: 'Menu',
-            onSelected: (value) {
-              switch (value) {
-                case 'profile':
-                  context.push('/profile');
-                  break;
-                case 'add_group':
-                  context.push('/create-group');
-                  break;
-                case 'change_password':
-                  context.push('/change-password');
-                  break;
-                case 'sign_out':
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Sign Out'),
-                      content: const Text('Are you sure you want to sign out?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            ref
-                                .read(signOutControllerProvider.notifier)
-                                .signOut();
-                          },
-                          child: const Text(
-                            'Sign Out',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
+      drawerEnableOpenDragGesture: true,
+      drawerEdgeDragWidth:
+          MediaQuery.of(context).size.width *
+          0.7, // High sensitivity for easy access
+      drawer: _buildDrawer(context, ref),
+      appBar: _isSelectionMode
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitSelectionMode,
+              ),
+              title: Text('${_selectedIds.length} Selected'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: _deleteSelectedFriends,
+                ),
+              ],
+            )
+          : AppBar(
+              title: const Text('SplitPlan'),
+              centerTitle: true,
+              leading: Builder(
+                builder: (context) {
+                  return IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () {
+                      Scaffold.of(context).openDrawer();
+                    },
+                    tooltip: 'Menu',
                   );
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem(
-                value: 'profile',
-                child: Row(
-                  children: [
-                    Icon(Icons.person, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text('Profile'),
-                  ],
-                ),
+                },
               ),
-              const PopupMenuItem(
-                value: 'add_group',
-                child: Row(
-                  children: [
-                    Icon(Icons.group_add, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text('Add Group'),
-                  ],
+
+              actions: [
+                IconButton(
+                  onPressed: () {
+                    // Show notifications bottom sheet
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      builder: (context) =>
+                          _buildNotificationsSheet(context, ref),
+                    );
+                  },
+                  icon: const Badge(
+                    // TODO: Wire up real pending count if needed, or just show dot
+                    label: Text('!'),
+                    isLabelVisible: false,
+                    child: Icon(Icons.notifications_outlined),
+                  ),
+                  tooltip: 'Notifications',
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'change_password',
-                child: Row(
-                  children: [
-                    Icon(Icons.vpn_key, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text('Change Password'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'sign_out',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Sign Out', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+              ],
+            ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(userFriendsProvider);
@@ -142,15 +170,8 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // User Welcome
-              if (userAsync.value != null)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Welcome back, ${userAsync.value!.name}!',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ),
+              // Content
+              const SizedBox(height: 16),
 
               // Net Balance Card
               if (paymentRequestsAsync.value != null) ...[
@@ -158,29 +179,56 @@ class HomeScreen extends ConsumerWidget {
                   builder: (context) {
                     final requests = paymentRequestsAsync.value!;
                     final userId = ref.watch(authStateProvider).value?.id;
+                    final friends = friendsAsync.value ?? [];
 
                     if (userId == null) return const SizedBox.shrink();
 
                     double toPay = 0;
                     double toReceive = 0;
+                    final toPayBreakdown = <String, double>{};
+                    final toReceiveBreakdown = <String, double>{};
+
+                    final userBalances = <String, double>{};
 
                     for (final request in requests) {
-                      if (request.status != PaymentRequestStatus.accepted)
+                      if (request.status != PaymentRequestStatus.accepted &&
+                          request.status != PaymentRequestStatus.paid) {
                         continue;
+                      }
 
-                      // Logic for Net Balance (Only Accepted Requests):
-                      if (request.fromUserId == userId) {
-                        if (request.type == PaymentRequestType.receive) {
-                          toReceive += request.amount;
-                        } else {
-                          toPay += request.amount;
-                        }
+                      final isFromMe = request.fromUserId == userId;
+                      final otherId = isFromMe
+                          ? request.toUserId
+                          : request.fromUserId;
+
+                      double impact = 0;
+                      if (request.type == PaymentRequestType.receive ||
+                          request.type == PaymentRequestType.settle) {
+                        // Requesting money
+                        // If I sent it, they owe me (+). If they sent it, I owe them (-).
+                        impact = isFromMe ? request.amount : -request.amount;
                       } else {
-                        if (request.type == PaymentRequestType.receive) {
-                          toPay += request.amount;
-                        } else {
-                          toReceive += request.amount;
-                        }
+                        // Payment/Settlement recording
+                        // If I sent it (Record Settlement), it means I received money -> Reduces what they owe me (-).
+                        // If they sent it, it means they received money -> Reduces what I owe them (+).
+                        impact = isFromMe ? -request.amount : request.amount;
+                      }
+
+                      userBalances.update(
+                        otherId,
+                        (value) => value + impact,
+                        ifAbsent: () => impact,
+                      );
+                    }
+
+                    for (final entry in userBalances.entries) {
+                      final balance = entry.value;
+                      if (balance > 0) {
+                        toReceive += balance;
+                        toReceiveBreakdown[entry.key] = balance;
+                      } else if (balance < 0) {
+                        toPay += balance.abs();
+                        toPayBreakdown[entry.key] = balance.abs();
                       }
                     }
 
@@ -213,7 +261,7 @@ class HomeScreen extends ConsumerWidget {
                         children: [
                           // Left Side: Net Balance
                           Expanded(
-                            flex: 3,
+                            flex: 1,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -254,48 +302,84 @@ class HomeScreen extends ConsumerWidget {
                           ),
                           // Right Side: Breakdown
                           Expanded(
-                            flex: 2,
+                            flex: 1,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // To Receive
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.arrow_upward,
-                                      color: Colors.greenAccent,
-                                      size: 20, // Increased from 16
+                                // To Pay
+                                InkWell(
+                                  onTap: () => _showBreakdown(
+                                    context,
+                                    'People you owe',
+                                    toPayBreakdown,
+                                    friends,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '\$${toReceive.toStringAsFixed(2)}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18, // Increased from 14
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.arrow_upward,
+                                          color: Colors.orangeAccent,
+                                          size: 20, // Increased from 16
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            '\$${toPay.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18, // Increased from 14
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                                 const SizedBox(height: 12), // Increased from 8
-                                // To Pay
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.arrow_downward,
-                                      color: Colors.orangeAccent,
-                                      size: 20, // Increased from 16
+                                // To Receive
+                                InkWell(
+                                  onTap: () => _showBreakdown(
+                                    context,
+                                    'People who owe you',
+                                    toReceiveBreakdown,
+                                    friends,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '\$${toPay.toStringAsFixed(2)}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18, // Increased from 14
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.arrow_downward,
+                                          color: Colors.greenAccent,
+                                          size: 20, // Increased from 16
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            '\$${toReceive.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18, // Increased from 14
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -360,7 +444,7 @@ class HomeScreen extends ConsumerWidget {
                           subtitle = 'You requested \$${latest.amount}';
                         }
                       } else {
-                        subtitle = '${latest.status.name.toUpperCase()}';
+                        subtitle = latest.status.name.toUpperCase();
                       }
                     } else {
                       // Fallback
@@ -416,44 +500,87 @@ class HomeScreen extends ConsumerWidget {
                     itemCount: allItems.length,
                     itemBuilder: (context, index) {
                       final item = allItems[index];
+                      final isSelected = _selectedIds.contains(item.id);
+
                       return Card(
+                        color: isSelected
+                            ? Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer.withOpacity(0.5)
+                            : null,
                         margin: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 6,
                         ),
                         child: ListTile(
+                          onLongPress: () {
+                            // Only allow selecting friends, not groups for now (as per plan implication)
+                            if (!item.isGroup) {
+                              _enterSelectionMode(item.id);
+                            }
+                          },
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
                           ),
-                          leading: CircleAvatar(
-                            radius: 24,
-                            backgroundColor: item.isGroup
-                                ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(context).colorScheme.surfaceVariant,
-                            backgroundImage: item.avatarUrl != null
-                                ? NetworkImage(item.avatarUrl!)
-                                : null,
-                            child: item.avatarUrl == null
-                                ? (item.isGroup
-                                      ? Icon(
-                                          Icons.groups,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimaryContainer,
-                                        )
-                                      : Text(
-                                          item.name.isNotEmpty
-                                              ? item.name[0].toUpperCase()
-                                              : '?',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ))
-                                : null,
+                          leading: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: item.isGroup
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest,
+                                backgroundImage: item.avatarUrl != null
+                                    ? NetworkImage(item.avatarUrl!)
+                                    : null,
+                                child: item.avatarUrl == null
+                                    ? (item.isGroup
+                                          ? Icon(
+                                              Icons.groups,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimaryContainer,
+                                            )
+                                          : Text(
+                                              item.name.isNotEmpty
+                                                  ? item.name[0].toUpperCase()
+                                                  : '?',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ))
+                                    : null,
+                              ),
+                              if (isSelected)
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.check,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           title: Text(
-                            item.name,
+                            item.isGroup
+                                ? item.name
+                                : (friends.any(
+                                        (f) => f.id == item.id && f.isManual,
+                                      )
+                                      ? '#${item.name.toLowerCase().replaceAll(' ', '_')}'
+                                      : '@${friends.firstWhere((f) => f.id == item.id).username}'),
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -494,10 +621,16 @@ class HomeScreen extends ConsumerWidget {
                             ],
                           ),
                           onTap: () {
-                            if (item.isGroup) {
-                              context.push('/groups/${item.id}');
+                            if (_isSelectionMode) {
+                              if (!item.isGroup) {
+                                _toggleSelection(item.id);
+                              }
                             } else {
-                              context.push('/friends/${item.id}');
+                              if (item.isGroup) {
+                                context.push('/groups/${item.id}');
+                              } else {
+                                context.push('/friends/${item.id}');
+                              }
                             }
                           },
                         ),
@@ -582,7 +715,8 @@ class HomeScreen extends ConsumerWidget {
                       child: ListTile(
                         leading: CircleAvatar(
                           child: Icon(
-                            isIncoming
+                            (request.type == PaymentRequestType.receive) !=
+                                    isIncoming
                                 ? Icons.arrow_downward
                                 : Icons.arrow_upward,
                           ),
@@ -659,6 +793,191 @@ class HomeScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => Center(child: Text('Error: $err')),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBreakdown(
+    BuildContext context,
+    String title,
+    Map<String, double> breakdown,
+    List<UserEntity> friends,
+  ) {
+    if (breakdown.isEmpty) return;
+
+    final friendsMap = {for (var f in friends) f.id: f};
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                child: Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Divider(),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: breakdown.length,
+                  itemBuilder: (context, index) {
+                    final friendId = breakdown.keys.elementAt(index);
+                    final amount = breakdown.values.elementAt(index);
+                    final friend = friendsMap[friendId];
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: friend?.avatarUrl != null
+                            ? NetworkImage(friend!.avatarUrl!)
+                            : null,
+                        child: friend?.avatarUrl == null
+                            ? Text(friend?.name[0].toUpperCase() ?? '?')
+                            : null,
+                      ),
+                      title: Text(
+                        friend != null
+                            ? (friend.isManual
+                                  ? '#${friend.name.toLowerCase().replaceAll(' ', '_')}'
+                                  : '@${friend.username}')
+                            : 'Unknown User',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      trailing: Text(
+                        '\$${amount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        if (friend != null) {
+                          context.push('/friends/${friend.id}');
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authStateProvider).value;
+    if (user == null) return const SizedBox.shrink();
+
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: Text(
+              user.name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            accountEmail: Text('@${user.username}'),
+            currentAccountPicture: GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/profile');
+              },
+              child: CircleAvatar(
+                radius: 40,
+                backgroundImage: user.avatarUrl != null
+                    ? NetworkImage(user.avatarUrl!)
+                    : null,
+                child: user.avatarUrl == null
+                    ? Text(
+                        user.name[0].toUpperCase(),
+                        style: const TextStyle(fontSize: 32),
+                      )
+                    : null,
+              ),
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Profile'),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              context.push('/profile');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.group_add_outlined),
+            title: const Text('New Group'),
+            onTap: () {
+              Navigator.pop(context);
+              context.push('/create-group');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Change Password'),
+            onTap: () {
+              Navigator.pop(context);
+              context.push('/change-password');
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text(
+              'Sign Out',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _showSignOutConfirmation(context, ref);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSignOutConfirmation(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(signOutControllerProvider.notifier).signOut();
+            },
+            child: const Text('Sign Out', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

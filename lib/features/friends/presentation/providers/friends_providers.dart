@@ -34,6 +34,17 @@ Stream<List<FriendshipRequest>> pendingFriendRequests(Ref ref) {
   return ref.watch(friendsRepositoryProvider).getPendingFriendRequests(user.id);
 }
 
+// Specific Friend Provider
+@riverpod
+Future<UserEntity?> specificFriend(Ref ref, String friendId) async {
+  final friends = await ref.watch(userFriendsProvider.future);
+  try {
+    return friends.firstWhere((friend) => friend.id == friendId);
+  } catch (_) {
+    return null;
+  }
+}
+
 // Search Users Controller
 @riverpod
 class SearchUsersController extends _$SearchUsersController {
@@ -108,5 +119,58 @@ class AcceptFriendRequestController extends _$AcceptFriendRequestController {
           .read(friendsRepositoryProvider)
           .rejectFriendRequest(friendshipId);
     });
+  }
+}
+
+// Create Manual Friend Controller
+@riverpod
+class CreateManualFriendController extends _$CreateManualFriendController {
+  @override
+  AsyncValue<void> build() {
+    return const AsyncValue.data(null);
+  }
+
+  Future<void> create(String name) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(friendsRepositoryProvider).createManualFriend(name);
+    });
+  }
+}
+
+// Merge Manual Friend Controller
+@riverpod
+class MergeManualFriendController extends _$MergeManualFriendController {
+  @override
+  AsyncValue<void> build() {
+    return const AsyncValue.data(null);
+  }
+
+  Future<void> merge({
+    required String manualFriendId,
+    required String realUserId,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => ref
+          .read(friendsRepositoryProvider)
+          .mergeManualFriendToReal(manualFriendId, realUserId),
+    );
+  }
+}
+
+// Delete Friend Controller
+@riverpod
+class DeleteFriendController extends _$DeleteFriendController {
+  @override
+  AsyncValue<void> build() {
+    return const AsyncValue.data(null);
+  }
+
+  Future<void> deleteFriend(String friendId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => ref.read(friendsRepositoryProvider).deleteFriend(friendId),
+    );
   }
 }

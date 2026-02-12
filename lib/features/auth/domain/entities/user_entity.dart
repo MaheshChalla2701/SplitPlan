@@ -13,6 +13,8 @@ class UserEntity with _$UserEntity {
     String? phoneNumber,
     String? avatarUrl,
     @Default(true) bool isSearchable,
+    @Default(false) bool isManual,
+    String? ownerId,
     @Default([]) List<String> friends,
     required DateTime createdAt,
     DateTime? updatedAt,

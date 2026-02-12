@@ -42,7 +42,7 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               onChanged: (value) {
@@ -134,7 +134,7 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
                             context.replace('/friends/${friend.id}');
                           },
                         );
-                      }).toList(),
+                      }),
                   ],
                 );
               },

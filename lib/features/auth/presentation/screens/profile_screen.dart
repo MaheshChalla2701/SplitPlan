@@ -152,6 +152,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   throw Exception('Not authenticated');
                                 }
 
+                                // Check if username is already taken by another user
+                                final usernameQuery = await FirebaseFirestore
+                                    .instance
+                                    .collection('users')
+                                    .where('username', isEqualTo: username)
+                                    .where(
+                                      FieldPath.documentId,
+                                      isNotEqualTo: userId,
+                                    )
+                                    .limit(1)
+                                    .get();
+
+                                if (usernameQuery.docs.isNotEmpty) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Username already taken'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 // Update user profile in Firestore
                                 await FirebaseFirestore.instance
                                     .collection('users')
@@ -159,8 +181,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     .update({
                                       'name': name,
                                       'username': username,
-                                      if (phone.isNotEmpty)
-                                        'phoneNumber': phone,
+                                      'phoneNumber': phone.isNotEmpty
+                                          ? phone
+                                          : null,
                                     });
 
                                 if (!context.mounted) return;

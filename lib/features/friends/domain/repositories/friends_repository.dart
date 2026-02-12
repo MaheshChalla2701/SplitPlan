@@ -10,6 +10,12 @@ abstract class FriendsRepository {
   Future<void> sendFriendRequest(String friendId);
   Future<void> acceptFriendRequest(String friendshipId);
   Future<void> rejectFriendRequest(String friendshipId);
+  Future<void> createManualFriend(String name);
+  Future<void> mergeManualFriendToReal(
+    String manualFriendId,
+    String realUserId,
+  );
+  Future<void> deleteFriend(String friendId);
 
   // Get friends
   Stream<List<UserEntity>> getUserFriends(String userId);

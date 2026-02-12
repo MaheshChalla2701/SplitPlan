@@ -39,12 +39,14 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
     final searchResults = ref.watch(searchUsersControllerProvider);
     final currentUser = ref.watch(authStateProvider).value;
 
-    ref.listen(sendFriendRequestControllerProvider, (previous, next) {
+    ref.listen(createManualFriendControllerProvider, (previous, next) {
       next.whenOrNull(
         data: (_) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Friend request sent!')));
+          ).showSnackBar(const SnackBar(content: Text('Manual friend added!')));
+          _searchController.clear();
+          ref.read(searchUsersControllerProvider.notifier).clearSearch();
         },
         error: (error, _) {
           ScaffoldMessenger.of(
@@ -127,7 +129,8 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
           Expanded(
             child: searchResults.when(
               data: (users) {
-                if (_searchController.text.isEmpty) {
+                final query = _searchController.text.trim();
+                if (query.isEmpty) {
                   return const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -143,90 +146,148 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
                   );
                 }
 
-                if (users.isEmpty) {
-                  return const Center(
+                // Filter out current user
+                final filteredUsers = users
+                    .where((user) => user.id != currentUser?.id)
+                    .toList();
+
+                if (filteredUsers.isEmpty) {
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.person_search, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
+                        const Icon(
+                          Icons.person_search,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(height: 16),
                         Text(
-                          'No users found',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                          'No users found for "$query"',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Friend not on the app?',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            ref
+                                .read(
+                                  createManualFriendControllerProvider.notifier,
+                                )
+                                .create(query);
+                          },
+                          icon: const Icon(Icons.add),
+                          label: Text('Add "$query" as #manual friend'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ],
                     ),
                   );
                 }
 
-                // Filter out current user
-                final filteredUsers = users
-                    .where((user) => user.id != currentUser?.id)
-                    .toList();
+                return Column(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filteredUsers.length,
+                        itemBuilder: (context, index) {
+                          final user = filteredUsers[index];
+                          final isAlreadyFriend =
+                              currentUser?.friends.contains(user.id) ?? false;
 
-                return ListView.builder(
-                  itemCount: filteredUsers.length,
-                  itemBuilder: (context, index) {
-                    final user = filteredUsers[index];
-                    final isAlreadyFriend =
-                        currentUser?.friends.contains(user.id) ?? false;
+                          return FutureBuilder<String?>(
+                            future: ref
+                                .read(friendsRepositoryProvider)
+                                .getFriendshipStatus(currentUser!.id, user.id),
+                            builder: (context, snapshot) {
+                              final status = snapshot.data;
+                              final hasPendingRequest = status == 'pending';
+                              final isAccepted = status == 'accepted';
 
-                    return FutureBuilder<String?>(
-                      future: ref
-                          .read(friendsRepositoryProvider)
-                          .getFriendshipStatus(currentUser!.id, user.id),
-                      builder: (context, snapshot) {
-                        final status = snapshot.data;
-                        final hasPendingRequest = status == 'pending';
-                        final isAccepted = status == 'accepted';
-
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: user.avatarUrl != null
-                                ? NetworkImage(user.avatarUrl!)
-                                : null,
-                            child: user.avatarUrl == null
-                                ? Text(user.name[0].toUpperCase())
-                                : null,
-                          ),
-                          title: Text(user.name),
-                          subtitle: Text('@${user.username}'),
-                          trailing: isAlreadyFriend || isAccepted
-                              ? const Chip(
-                                  label: Text('Friends'),
-                                  backgroundColor: AppTheme.primaryColor,
-                                )
-                              : hasPendingRequest
-                              ? const Chip(
-                                  label: Text('Pending'),
-                                  backgroundColor: Colors.orange,
-                                )
-                              : ElevatedButton.icon(
-                                  onPressed: () {
-                                    ref
-                                        .read(
-                                          sendFriendRequestControllerProvider
-                                              .notifier,
-                                        )
-                                        .sendRequest(user.id);
-                                  },
-                                  icon: const Icon(Icons.person_add, size: 16),
-                                  label: const Text('Add'),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: user.avatarUrl != null
+                                      ? NetworkImage(user.avatarUrl!)
+                                      : null,
+                                  child: user.avatarUrl == null
+                                      ? Text(user.name[0].toUpperCase())
+                                      : null,
+                                ),
+                                title: Text(user.name),
+                                subtitle: Text(
+                                  user.isManual
+                                      ? '#${user.name.toLowerCase().replaceAll(' ', '_')}'
+                                      : '@${user.username}',
+                                  style: TextStyle(
+                                    color: user.isManual
+                                        ? Colors.blueGrey
+                                        : Colors.grey,
                                   ),
                                 ),
-                          onTap: () {
-                            // Navigate to user profile or friend detail
-                            // context.push('/friends/${user.id}');
-                          },
-                        );
-                      },
-                    );
-                  },
+                                trailing: isAlreadyFriend || isAccepted
+                                    ? const Chip(
+                                        label: Text('Friends'),
+                                        backgroundColor: AppTheme.primaryColor,
+                                      )
+                                    : hasPendingRequest
+                                    ? const Chip(
+                                        label: Text('Pending'),
+                                        backgroundColor: Colors.orange,
+                                      )
+                                    : ElevatedButton.icon(
+                                        onPressed: () {
+                                          ref
+                                              .read(
+                                                sendFriendRequestControllerProvider
+                                                    .notifier,
+                                              )
+                                              .sendRequest(user.id);
+                                        },
+                                        icon: const Icon(
+                                          Icons.person_add,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Add'),
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                        ),
+                                      ),
+                                onTap: () {},
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    // Option to add manual friend even if real users are found
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          ref
+                              .read(
+                                createManualFriendControllerProvider.notifier,
+                              )
+                              .create(query);
+                        },
+                        icon: const Icon(Icons.add),
+                        label: Text('Add "$query" as #manual friend instead'),
+                      ),
+                    ),
+                  ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),

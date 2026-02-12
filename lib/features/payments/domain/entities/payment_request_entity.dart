@@ -23,6 +23,7 @@ class PaymentRequestEntity with _$PaymentRequestEntity {
 enum PaymentRequestType {
   pay, // I want to PAY someone
   receive, // I want to RECEIVE money from someone
+  settle, // I am SETTLING a debt (partial or full)
 }
 
 enum PaymentRequestStatus { pending, accepted, paid, rejected }
