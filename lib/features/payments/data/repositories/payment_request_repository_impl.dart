@@ -20,6 +20,48 @@ class PaymentRequestRepositoryImpl implements PaymentRequestRepository {
 
       if (toUserDoc.exists && (toUserDoc.data()?['isManual'] ?? false)) {
         status = PaymentRequestStatus.accepted;
+      } else if (toUserDoc.exists) {
+        // Check if the sender is still in the receiver's friend list
+        // This handles the "Soft Block" where if a user deleted me, I can't send them requests
+        final friends = List<String>.from(toUserDoc.data()?['friends'] ?? []);
+        if (!friends.contains(request.fromUserId)) {
+          throw Exception(
+            'User is not your friend. Please send a friend request to reconnect.',
+          );
+        }
+
+        // Check for Auto-Accept
+        try {
+          // Find friendship doc (bidirectional check)
+          var friendshipQuery = await _firestore
+              .collection('friendships')
+              .where('userId', isEqualTo: request.toUserId)
+              .where('friendId', isEqualTo: request.fromUserId)
+              .limit(1)
+              .get();
+
+          if (friendshipQuery.docs.isEmpty) {
+            friendshipQuery = await _firestore
+                .collection('friendships')
+                .where('userId', isEqualTo: request.fromUserId)
+                .where('friendId', isEqualTo: request.toUserId)
+                .limit(1)
+                .get();
+          }
+
+          if (friendshipQuery.docs.isNotEmpty) {
+            final data = friendshipQuery.docs.first.data();
+            final autoAcceptSettings =
+                data['autoAcceptSettings'] as Map<String, dynamic>?;
+            if (autoAcceptSettings != null &&
+                autoAcceptSettings[request.toUserId] == true) {
+              status = PaymentRequestStatus.accepted;
+            }
+          }
+        } catch (e) {
+          // Ignore error, proceed with default status
+          print('Error checking auto-accept: $e');
+        }
       }
 
       await _firestore.collection('payment_requests').add({
@@ -56,6 +98,19 @@ class PaymentRequestRepositoryImpl implements PaymentRequestRepository {
       await _firestore.collection('payment_requests').doc(requestId).delete();
     } catch (e) {
       throw Exception('Failed to delete payment request: $e');
+    }
+  }
+
+  @override
+  Future<void> updatePaymentRequest(PaymentRequestEntity request) async {
+    try {
+      await _firestore.collection('payment_requests').doc(request.id).update({
+        'amount': request.amount,
+        'description': request.description,
+        // We generally don't update fromUserId/toUserId/type/createdAt for an edit
+      });
+    } catch (e) {
+      throw Exception('Failed to update payment request: $e');
     }
   }
 

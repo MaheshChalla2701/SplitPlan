@@ -8,6 +8,7 @@ abstract class PaymentRequestRepository {
     PaymentRequestStatus status,
   );
   Future<void> deletePaymentRequest(String requestId);
+  Future<void> updatePaymentRequest(PaymentRequestEntity request);
 
   // Get payment requests
   Stream<List<PaymentRequestEntity>> getPaymentRequests(String userId);

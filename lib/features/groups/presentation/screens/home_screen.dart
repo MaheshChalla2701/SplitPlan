@@ -221,6 +221,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       );
                     }
 
+                    // Filter out balances from users who are NO LONGER friends
+                    // This implements the "Hide Balance" part of Soft Delete
+                    userBalances.removeWhere((key, value) {
+                      final isFriend = friends.any((f) => f.id == key);
+                      // TODO: If we ever have group-based requests that aren't tied to friendship,
+                      // we might need to check groups too. For now, 1:1 requests require friendship.
+                      return !isFriend;
+                    });
+
                     for (final entry in userBalances.entries) {
                       final balance = entry.value;
                       if (balance > 0) {
@@ -677,121 +686,247 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const Divider(),
           Expanded(
-            child: paymentRequestsAsync.when(
-              data: (requests) {
-                // Filter for PENDING requests from OTHERS
-                // OR ACCEPTED requests that I need to PAY (if I am the Payer)
-                final relevantRequests = requests.where((req) {
-                  // User wants to see ALL PENDING requests (Incoming and Outgoing)
-                  return req.status == PaymentRequestStatus.pending;
-                }).toList();
-
-                if (relevantRequests.isEmpty) {
-                  return const Center(child: Text('No new notifications'));
-                }
-
-                // Prepare friends map for quick lookup
-                final friends = friendsAsync.value ?? [];
-                final friendsMap = {for (var f in friends) f.id: f};
-
-                return ListView.builder(
-                  itemCount: relevantRequests.length,
-                  itemBuilder: (context, index) {
-                    final request = relevantRequests[index];
-                    final isIncoming = request.toUserId == userId;
-
-                    final isMyActionRequired =
-                        isIncoming &&
-                        request.type == PaymentRequestType.receive;
-
-                    final friendId = isIncoming
-                        ? request.fromUserId
-                        : request.toUserId;
-
-                    final friendName =
-                        friendsMap[friendId]?.name ?? 'Unknown User';
-
-                    return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          child: Icon(
-                            (request.type == PaymentRequestType.receive) !=
-                                    isIncoming
-                                ? Icons.arrow_downward
-                                : Icons.arrow_upward,
-                          ),
-                        ),
-                        title: Text(
-                          friendName,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          '${isIncoming ? "Requested from you" : "You requested"} \$${request.amount}${request.description != null && request.description!.isNotEmpty ? "\n${request.description}" : ""}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: isMyActionRequired
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    onPressed: () async {
-                                      // Reject
-                                      await ref
-                                          .read(
-                                            updatePaymentRequestControllerProvider
-                                                .notifier,
-                                          )
-                                          .updateStatus(
-                                            request.id,
-                                            PaymentRequestStatus.rejected,
-                                          );
-                                      // Don't pop, allow multiple actions
-                                    },
-                                    icon: const Icon(
-                                      Icons.close,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () async {
-                                      // Accept (Adds to balance)
-                                      await ref
-                                          .read(
-                                            updatePaymentRequestControllerProvider
-                                                .notifier,
-                                          )
-                                          .updateStatus(
-                                            request.id,
-                                            PaymentRequestStatus.accepted,
-                                          );
-                                    },
-                                    icon: const Icon(
-                                      Icons.check,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Chip(
-                                label: const Text(
-                                  'Pending',
-                                  style: TextStyle(fontSize: 10),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Friend Requests Section
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final friendRequestsAsync = ref.watch(
+                        pendingFriendRequestsProvider,
+                      );
+                      return friendRequestsAsync.when(
+                        data: (requests) {
+                          if (requests.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
-                                backgroundColor: Colors.orange.withOpacity(0.1),
-                                labelPadding: EdgeInsets.zero,
+                                child: Text(
+                                  'Friend Requests (${requests.length})',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.push('/friends/$friendId');
+                              ...requests.map((request) {
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundImage:
+                                          request.requester.avatarUrl != null
+                                          ? NetworkImage(
+                                              request.requester.avatarUrl!,
+                                            )
+                                          : null,
+                                      child: request.requester.avatarUrl == null
+                                          ? Text(
+                                              request.requester.name[0]
+                                                  .toUpperCase(),
+                                            )
+                                          : null,
+                                    ),
+                                    title: Text(
+                                      request.requester.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '@${request.requester.username}',
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () async {
+                                            await ref
+                                                .read(
+                                                  acceptFriendRequestControllerProvider
+                                                      .notifier,
+                                                )
+                                                .reject(request.id);
+                                          },
+                                          icon: const Icon(
+                                            Icons.close,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () async {
+                                            await ref
+                                                .read(
+                                                  acceptFriendRequestControllerProvider
+                                                      .notifier,
+                                                )
+                                                .accept(request.id);
+                                          },
+                                          icon: const Icon(
+                                            Icons.check,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                              const Divider(),
+                            ],
+                          );
                         },
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error: $err')),
+                        loading: () =>
+                            const Center(child: LinearProgressIndicator()),
+                        error: (err, stack) => Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text('Error loading requests: $err'),
+                        ),
+                      );
+                    },
+                  ),
+                  // Payment Requests Section
+                  paymentRequestsAsync.when(
+                    data: (requests) {
+                      // Filter for PENDING requests from OTHERS
+                      // OR ACCEPTED requests that I need to PAY (if I am the Payer)
+                      final relevantRequests = requests.where((req) {
+                        // User wants to see ALL PENDING requests (Incoming and Outgoing)
+                        return req.status == PaymentRequestStatus.pending;
+                      }).toList();
+
+                      if (relevantRequests.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text('No payment requests'),
+                          ),
+                        );
+                      }
+
+                      // Prepare friends map for quick lookup
+                      final friends = friendsAsync.value ?? [];
+                      final friendsMap = {for (var f in friends) f.id: f};
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: relevantRequests.length,
+                        itemBuilder: (context, index) {
+                          final request = relevantRequests[index];
+                          final isIncoming = request.toUserId == userId;
+
+                          final isMyActionRequired =
+                              isIncoming &&
+                              request.type == PaymentRequestType.receive;
+
+                          final friendId = isIncoming
+                              ? request.fromUserId
+                              : request.toUserId;
+
+                          final friendName =
+                              friendsMap[friendId]?.name ?? 'Unknown User';
+
+                          return Card(
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                child: Icon(
+                                  (request.type ==
+                                              PaymentRequestType.receive) !=
+                                          isIncoming
+                                      ? Icons.arrow_downward
+                                      : Icons.arrow_upward,
+                                ),
+                              ),
+                              title: Text(
+                                friendName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${isIncoming ? "Requested from you" : "You requested"} \$${request.amount}${request.description != null && request.description!.isNotEmpty ? "\n${request.description}" : ""}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: isMyActionRequired
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () async {
+                                            // Reject
+                                            await ref
+                                                .read(
+                                                  updatePaymentRequestControllerProvider
+                                                      .notifier,
+                                                )
+                                                .updateStatus(
+                                                  request.id,
+                                                  PaymentRequestStatus.rejected,
+                                                );
+                                            // Don't pop, allow multiple actions
+                                          },
+                                          icon: const Icon(
+                                            Icons.close,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () async {
+                                            // Accept (Adds to balance)
+                                            await ref
+                                                .read(
+                                                  updatePaymentRequestControllerProvider
+                                                      .notifier,
+                                                )
+                                                .updateStatus(
+                                                  request.id,
+                                                  PaymentRequestStatus.accepted,
+                                                );
+                                          },
+                                          icon: const Icon(
+                                            Icons.check,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Chip(
+                                      label: const Text(
+                                        'Pending',
+                                        style: TextStyle(fontSize: 10),
+                                      ),
+                                      backgroundColor: Colors.orange
+                                          .withOpacity(0.1),
+                                      labelPadding: EdgeInsets.zero,
+                                    ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.push('/friends/$friendId');
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (err, stack) => Center(child: Text('Error: $err')),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

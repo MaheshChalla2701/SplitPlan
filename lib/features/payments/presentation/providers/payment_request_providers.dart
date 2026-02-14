@@ -83,4 +83,13 @@ class UpdatePaymentRequestController extends _$UpdatePaymentRequestController {
           .deletePaymentRequest(requestId);
     });
   }
+
+  Future<void> updateDetails(PaymentRequestEntity request) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref
+          .read(paymentRequestRepositoryProvider)
+          .updatePaymentRequest(request);
+    });
+  }
 }

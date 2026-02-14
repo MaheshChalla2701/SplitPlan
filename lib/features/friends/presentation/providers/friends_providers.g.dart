@@ -203,8 +203,249 @@ class _SpecificFriendProviderElement
   String get friendId => (origin as SpecificFriendProvider).friendId;
 }
 
+String _$friendshipStatusHash() => r'71d3d335dbe0bb07502192011cdfc53e3d99dba4';
+
+/// See also [friendshipStatus].
+@ProviderFor(friendshipStatus)
+const friendshipStatusProvider = FriendshipStatusFamily();
+
+/// See also [friendshipStatus].
+class FriendshipStatusFamily extends Family<AsyncValue<String?>> {
+  /// See also [friendshipStatus].
+  const FriendshipStatusFamily();
+
+  /// See also [friendshipStatus].
+  FriendshipStatusProvider call(String friendId) {
+    return FriendshipStatusProvider(friendId);
+  }
+
+  @override
+  FriendshipStatusProvider getProviderOverride(
+    covariant FriendshipStatusProvider provider,
+  ) {
+    return call(provider.friendId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'friendshipStatusProvider';
+}
+
+/// See also [friendshipStatus].
+class FriendshipStatusProvider extends AutoDisposeFutureProvider<String?> {
+  /// See also [friendshipStatus].
+  FriendshipStatusProvider(String friendId)
+    : this._internal(
+        (ref) => friendshipStatus(ref as FriendshipStatusRef, friendId),
+        from: friendshipStatusProvider,
+        name: r'friendshipStatusProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$friendshipStatusHash,
+        dependencies: FriendshipStatusFamily._dependencies,
+        allTransitiveDependencies:
+            FriendshipStatusFamily._allTransitiveDependencies,
+        friendId: friendId,
+      );
+
+  FriendshipStatusProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.friendId,
+  }) : super.internal();
+
+  final String friendId;
+
+  @override
+  Override overrideWith(
+    FutureOr<String?> Function(FriendshipStatusRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: FriendshipStatusProvider._internal(
+        (ref) => create(ref as FriendshipStatusRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        friendId: friendId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<String?> createElement() {
+    return _FriendshipStatusProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FriendshipStatusProvider && other.friendId == friendId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, friendId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin FriendshipStatusRef on AutoDisposeFutureProviderRef<String?> {
+  /// The parameter `friendId` of this provider.
+  String get friendId;
+}
+
+class _FriendshipStatusProviderElement
+    extends AutoDisposeFutureProviderElement<String?>
+    with FriendshipStatusRef {
+  _FriendshipStatusProviderElement(super.provider);
+
+  @override
+  String get friendId => (origin as FriendshipStatusProvider).friendId;
+}
+
+String _$friendshipDetailsHash() => r'80c566d7520b9404417ff1e119b1f1eeeb7c30e1';
+
+/// See also [friendshipDetails].
+@ProviderFor(friendshipDetails)
+const friendshipDetailsProvider = FriendshipDetailsFamily();
+
+/// See also [friendshipDetails].
+class FriendshipDetailsFamily extends Family<AsyncValue<FriendshipEntity?>> {
+  /// See also [friendshipDetails].
+  const FriendshipDetailsFamily();
+
+  /// See also [friendshipDetails].
+  FriendshipDetailsProvider call(String friendId) {
+    return FriendshipDetailsProvider(friendId);
+  }
+
+  @override
+  FriendshipDetailsProvider getProviderOverride(
+    covariant FriendshipDetailsProvider provider,
+  ) {
+    return call(provider.friendId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'friendshipDetailsProvider';
+}
+
+/// See also [friendshipDetails].
+class FriendshipDetailsProvider
+    extends AutoDisposeFutureProvider<FriendshipEntity?> {
+  /// See also [friendshipDetails].
+  FriendshipDetailsProvider(String friendId)
+    : this._internal(
+        (ref) => friendshipDetails(ref as FriendshipDetailsRef, friendId),
+        from: friendshipDetailsProvider,
+        name: r'friendshipDetailsProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$friendshipDetailsHash,
+        dependencies: FriendshipDetailsFamily._dependencies,
+        allTransitiveDependencies:
+            FriendshipDetailsFamily._allTransitiveDependencies,
+        friendId: friendId,
+      );
+
+  FriendshipDetailsProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.friendId,
+  }) : super.internal();
+
+  final String friendId;
+
+  @override
+  Override overrideWith(
+    FutureOr<FriendshipEntity?> Function(FriendshipDetailsRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: FriendshipDetailsProvider._internal(
+        (ref) => create(ref as FriendshipDetailsRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        friendId: friendId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<FriendshipEntity?> createElement() {
+    return _FriendshipDetailsProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FriendshipDetailsProvider && other.friendId == friendId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, friendId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin FriendshipDetailsRef on AutoDisposeFutureProviderRef<FriendshipEntity?> {
+  /// The parameter `friendId` of this provider.
+  String get friendId;
+}
+
+class _FriendshipDetailsProviderElement
+    extends AutoDisposeFutureProviderElement<FriendshipEntity?>
+    with FriendshipDetailsRef {
+  _FriendshipDetailsProviderElement(super.provider);
+
+  @override
+  String get friendId => (origin as FriendshipDetailsProvider).friendId;
+}
+
 String _$searchUsersControllerHash() =>
-    r'9491f0c494316e8da3f448de398b83a13cec4ae3';
+    r'411c683ef5a82fe659ffd281f047b836944ebce7';
 
 /// See also [SearchUsersController].
 @ProviderFor(SearchUsersController)
@@ -324,5 +565,45 @@ final deleteFriendControllerProvider =
     );
 
 typedef _$DeleteFriendController = AutoDisposeNotifier<AsyncValue<void>>;
+String _$clearChatHistoryControllerHash() =>
+    r'490eee15d442b8f2f7483a784f4bbebde29c2c0b';
+
+/// See also [ClearChatHistoryController].
+@ProviderFor(ClearChatHistoryController)
+final clearChatHistoryControllerProvider =
+    AutoDisposeNotifierProvider<
+      ClearChatHistoryController,
+      AsyncValue<void>
+    >.internal(
+      ClearChatHistoryController.new,
+      name: r'clearChatHistoryControllerProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$clearChatHistoryControllerHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$ClearChatHistoryController = AutoDisposeNotifier<AsyncValue<void>>;
+String _$updateAutoAcceptControllerHash() =>
+    r'e18041f7608d88dd593215bff47dbcb5509c9a85';
+
+/// See also [UpdateAutoAcceptController].
+@ProviderFor(UpdateAutoAcceptController)
+final updateAutoAcceptControllerProvider =
+    AutoDisposeNotifierProvider<
+      UpdateAutoAcceptController,
+      AsyncValue<void>
+    >.internal(
+      UpdateAutoAcceptController.new,
+      name: r'updateAutoAcceptControllerProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$updateAutoAcceptControllerHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$UpdateAutoAcceptController = AutoDisposeNotifier<AsyncValue<void>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

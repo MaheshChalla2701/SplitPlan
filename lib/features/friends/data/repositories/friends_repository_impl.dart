@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/entities/friendship_request.dart';
+import '../../domain/entities/friendship_entity.dart';
 import '../../domain/repositories/friends_repository.dart';
 
 class FriendsRepositoryImpl implements FriendsRepository {
@@ -13,7 +14,7 @@ class FriendsRepositoryImpl implements FriendsRepository {
   String get _currentUserId => _auth.currentUser!.uid;
 
   @override
-  Future<List<UserEntity>> searchUserByPhone(String phone) async {
+  Future<List<UserEntity>> searchByPhone(String phone) async {
     try {
       final normalized = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
       final query = await _firestore
@@ -43,7 +44,7 @@ class FriendsRepositoryImpl implements FriendsRepository {
   }
 
   @override
-  Future<List<UserEntity>> searchUserByUsername(String username) async {
+  Future<List<UserEntity>> searchByUsername(String username) async {
     try {
       final searchLower = username.toLowerCase();
       // Simple orderBy query without isSearchable to avoid index issues
@@ -265,6 +266,136 @@ class FriendsRepositoryImpl implements FriendsRepository {
   }
 
   @override
+  Future<FriendshipEntity?> getFriendship(
+    String userId,
+    String friendId,
+  ) async {
+    try {
+      // Check forward direction
+      var query = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: userId)
+          .where('friendId', isEqualTo: friendId)
+          .limit(1)
+          .get();
+
+      // Check reverse direction if not found
+      if (query.docs.isEmpty) {
+        query = await _firestore
+            .collection('friendships')
+            .where('userId', isEqualTo: friendId)
+            .where('friendId', isEqualTo: userId)
+            .limit(1)
+            .get();
+      }
+
+      if (query.docs.isEmpty) return null;
+      final doc = query.docs.first;
+      final data = doc.data();
+
+      // Get user-specific clear time
+      DateTime? lastClearedAt;
+      if (data['chatClearHistory'] != null) {
+        final history = data['chatClearHistory'] as Map<String, dynamic>;
+        final userClearTime = history[userId];
+        if (userClearTime is Timestamp) {
+          lastClearedAt = userClearTime.toDate();
+        }
+      } else if (data['lastClearedAt'] != null &&
+          data['lastClearedAt'] is Timestamp) {
+        // Fallback for legacy data (global clear)
+        lastClearedAt = (data['lastClearedAt'] as Timestamp).toDate();
+      }
+
+      return FriendshipEntity.fromJson({
+        'id': doc.id,
+        'userId': data['userId'],
+        'friendId': data['friendId'],
+        'status': data['status'],
+        'createdAt': (data['createdAt'] as Timestamp)
+            .toDate()
+            .toIso8601String(),
+        if (lastClearedAt != null)
+          'lastClearedAt': lastClearedAt.toIso8601String(),
+        'isAutoAccept':
+            (data['autoAcceptSettings'] != null &&
+            (data['autoAcceptSettings'] as Map<String, dynamic>)[userId] ==
+                true),
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> clearChatHistory(String userId, String friendId) async {
+    try {
+      // Check forward direction
+      var query = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: userId)
+          .where('friendId', isEqualTo: friendId)
+          .limit(1)
+          .get();
+
+      // Check reverse direction if not found
+      if (query.docs.isEmpty) {
+        query = await _firestore
+            .collection('friendships')
+            .where('userId', isEqualTo: friendId)
+            .where('friendId', isEqualTo: userId)
+            .limit(1)
+            .get();
+      }
+
+      if (query.docs.isNotEmpty) {
+        // Update user-specific clear time in the map
+        await query.docs.first.reference.update({
+          'chatClearHistory.$userId': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      throw Exception('Failed to clear chat history: $e');
+    }
+  }
+
+  @override
+  Future<void> updateAutoAccept(
+    String userId,
+    String friendId,
+    bool isAutoAccept,
+  ) async {
+    try {
+      // Check forward direction
+      var query = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: userId)
+          .where('friendId', isEqualTo: friendId)
+          .limit(1)
+          .get();
+
+      // Check reverse direction if not found
+      if (query.docs.isEmpty) {
+        query = await _firestore
+            .collection('friendships')
+            .where('userId', isEqualTo: friendId)
+            .where('friendId', isEqualTo: userId)
+            .limit(1)
+            .get();
+      }
+
+      if (query.docs.isNotEmpty) {
+        // Update user-specific auto-accept setting in the map
+        await query.docs.first.reference.update({
+          'autoAcceptSettings.$userId': isAutoAccept,
+        });
+      }
+    } catch (e) {
+      throw Exception('Failed to update auto-accept setting: $e');
+    }
+  }
+
+  @override
   Future<void> createManualFriend(String name) async {
     try {
       final now = DateTime.now();
@@ -399,77 +530,28 @@ class FriendsRepositoryImpl implements FriendsRepository {
       final friendData = friendDoc.data()!;
       final isManual = friendData['isManual'] == true;
 
-      // 2. Perform checks for Real Users
-      if (!isManual) {
-        // Calculate Net Balance
-        final requestsFrom = await _firestore
+      // 2. Prepare Batch
+      final batch = _firestore.batch();
+
+      if (isManual) {
+        // --- MANUAL FRIEND DELETION (Hard Delete) ---
+
+        // Delete Transaction History (All requests between users)
+        final allRequestsFrom = await _firestore
             .collection('payment_requests')
             .where('fromUserId', isEqualTo: friendId)
             .where('toUserId', isEqualTo: userId)
-            .where('status', whereIn: ['accepted', 'paid'])
             .get();
 
-        final requestsTo = await _firestore
+        final allRequestsTo = await _firestore
             .collection('payment_requests')
             .where('fromUserId', isEqualTo: userId)
             .where('toUserId', isEqualTo: friendId)
-            .where('status', whereIn: ['accepted', 'paid'])
             .get();
 
-        double toPay = 0;
-        double toReceive = 0;
+        for (final doc in allRequestsFrom.docs) batch.delete(doc.reference);
+        for (final doc in allRequestsTo.docs) batch.delete(doc.reference);
 
-        for (final doc in requestsFrom.docs) {
-          final data = doc.data();
-          final amount = (data['amount'] as num).toDouble();
-          final type = data['type'];
-          if (type == 'receive' || type == 'settle') {
-            toPay += amount;
-          } else {
-            toReceive += amount;
-          }
-        }
-
-        for (final doc in requestsTo.docs) {
-          final data = doc.data();
-          final amount = (data['amount'] as num).toDouble();
-          final type = data['type'];
-          if (type == 'receive' || type == 'settle') {
-            toReceive += amount;
-          } else {
-            toPay += amount;
-          }
-        }
-
-        final netBalance = toReceive - toPay;
-
-        // If user owes money (Net Balance < 0), block deletion
-        if (netBalance < 0) {
-          throw Exception('Cannot delete friend while you owe them money.');
-        }
-      }
-
-      // 3. Prepare Batch
-      final batch = _firestore.batch();
-
-      // 4. Delete Transaction History (All requests between users)
-      final allRequestsFrom = await _firestore
-          .collection('payment_requests')
-          .where('fromUserId', isEqualTo: friendId)
-          .where('toUserId', isEqualTo: userId)
-          .get();
-
-      final allRequestsTo = await _firestore
-          .collection('payment_requests')
-          .where('fromUserId', isEqualTo: userId)
-          .where('toUserId', isEqualTo: friendId)
-          .get();
-
-      for (final doc in allRequestsFrom.docs) batch.delete(doc.reference);
-      for (final doc in allRequestsTo.docs) batch.delete(doc.reference);
-
-      // 5. Handle User & Friendship Deletion
-      if (isManual) {
         // Delete manual user doc
         batch.delete(_firestore.collection('users').doc(friendId));
 
@@ -478,22 +560,19 @@ class FriendsRepositoryImpl implements FriendsRepository {
           'friends': FieldValue.arrayRemove([friendId]),
         });
       } else {
-        // Real User: Mutual Deletion
+        // --- REAL FRIEND DELETION (Soft Delete) ---
 
-        // Remove from current user's list
+        // 1. Remove from current user's list ONLY
         batch.update(_firestore.collection('users').doc(userId), {
           'friends': FieldValue.arrayRemove([friendId]),
         });
 
-        // Remove current user from friend's list
-        batch.update(_firestore.collection('users').doc(friendId), {
-          'friends': FieldValue.arrayRemove([userId]),
-        });
+        // 2. DO NOT remove current user from friend's list (One-sided)
+        // 3. DO NOT delete transaction history (Keep history)
       }
 
-      // 6. Delete Friendship Document
-      // We query both directions specifically to satisfy Firestore security rules
-      // (The previous whereIn query was too broad)
+      // 3. Delete Friendship Document (Common for both)
+      // This breaks the link so they can't simply send requests again without re-friending.
       final friendshipAsSender = await _firestore
           .collection('friendships')
           .where('userId', isEqualTo: userId)
@@ -509,7 +588,7 @@ class FriendsRepositoryImpl implements FriendsRepository {
       for (final doc in friendshipAsSender.docs) batch.delete(doc.reference);
       for (final doc in friendshipAsReceiver.docs) batch.delete(doc.reference);
 
-      // 7. Commit
+      // 4. Commit
       await batch.commit();
     } catch (e) {
       throw Exception('Failed to delete friend: $e');
