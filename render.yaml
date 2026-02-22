@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: splitplan-notifications
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    branch: main
+    envVars:
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
