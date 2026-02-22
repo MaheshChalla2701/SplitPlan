@@ -62,7 +62,7 @@ final pendingFriendRequestsProvider =
 // ignore: unused_element
 typedef PendingFriendRequestsRef =
     AutoDisposeStreamProviderRef<List<FriendshipRequest>>;
-String _$specificFriendHash() => r'4e8a5e0d3cfd8781c67d2ec7bdfa527f9a2bc35b';
+String _$specificFriendHash() => r'c02d5e14db9d5e01f2bc65bc67419093713d9983';
 
 /// Copied from Dart SDK
 class _SystemHash {

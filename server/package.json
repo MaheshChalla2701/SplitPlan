@@ -1,0 +1,17 @@
+{
+    "name": "splitplan-notification-server",
+    "description": "SplitPlan push notification server — watches Firestore and sends FCM notifications via Firebase Admin SDK",
+    "version": "1.0.0",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "node --watch index.js"
+    },
+    "engines": {
+        "node": ">=20"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "firebase-admin": "^12.0.0"
+    }
+}

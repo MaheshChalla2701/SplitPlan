@@ -39,6 +39,8 @@ dependencies:
   firebase_core: ^3.8.1
   firebase_auth: ^5.3.4
   cloud_firestore: ^5.5.2
+  firebase_messaging: ^15.1.0
+  flutter_local_notifications: ^17.2.4
 
   # State Management
   flutter_riverpod: ^2.6.1

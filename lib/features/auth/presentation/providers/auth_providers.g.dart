@@ -58,7 +58,7 @@ final authRepositoryProvider = AutoDisposeProvider<AuthRepository>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AuthRepositoryRef = AutoDisposeProviderRef<AuthRepository>;
-String _$authStateHash() => r'95c776affe675f041a8d4cf06fbb7ecc1183b699';
+String _$authStateHash() => r'7644c50abc2fed55ad8596eb56838d1f9a37fa42';
 
 /// See also [authState].
 @ProviderFor(authState)
@@ -107,7 +107,7 @@ final signupControllerProvider =
     );
 
 typedef _$SignupController = AutoDisposeNotifier<AsyncValue<void>>;
-String _$signOutControllerHash() => r'cf30756d3cef6bdb35248acaca7fcf03a36163c2';
+String _$signOutControllerHash() => r'45938f6dcf1290028437d088abe891b2dc225c48';
 
 /// See also [SignOutController].
 @ProviderFor(SignOutController)

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../data/repositories/auth_repository_impl.dart';
+import '../../data/services/fcm_token_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 
@@ -28,7 +29,15 @@ AuthRepository authRepository(Ref ref) {
 // Current User State
 @riverpod
 Stream<UserEntity?> authState(Ref ref) {
-  return ref.watch(authRepositoryProvider).authStateChanges;
+  final stream = ref.watch(authRepositoryProvider).authStateChanges;
+  // Save or clear the FCM token whenever the auth state changes
+  stream.listen((user) {
+    final tokenService = ref.read(fcmTokenServiceProvider);
+    if (user != null) {
+      tokenService.saveTokenForUser(user.id);
+    }
+  });
+  return stream;
 }
 
 // Login Controller
@@ -82,6 +91,11 @@ class SignOutController extends _$SignOutController {
 
   Future<void> signOut() async {
     state = const AsyncValue.loading();
+    // Clear the FCM token before signing out
+    final currentUser = ref.read(authStateProvider).value;
+    if (currentUser != null) {
+      await ref.read(fcmTokenServiceProvider).clearTokenForUser(currentUser.id);
+    }
     state = await AsyncValue.guard(
       () => ref.read(authRepositoryProvider).signOut(),
     );
