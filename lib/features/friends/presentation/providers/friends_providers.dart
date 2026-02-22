@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
@@ -40,9 +41,33 @@ Stream<List<FriendshipRequest>> pendingFriendRequests(Ref ref) {
 // Specific Friend Provider
 @riverpod
 Future<UserEntity?> specificFriend(Ref ref, String friendId) async {
-  final friends = await ref.watch(userFriendsProvider.future);
   try {
-    return friends.firstWhere((friend) => friend.id == friendId);
+    // 1. Try to find in explicit friends list first
+    final friends = await ref.watch(userFriendsProvider.future);
+    final isFriend = friends.where((friend) => friend.id == friendId);
+    if (isFriend.isNotEmpty) {
+      return isFriend.first;
+    }
+
+    // 2. Not in friends list (e.g. via group), fetch from Firestore directly
+    final firestore = ref.read(firebaseFirestoreProvider);
+    final doc = await firestore.collection('users').doc(friendId).get();
+
+    if (doc.exists && doc.data() != null) {
+      final data = doc.data()!;
+      return UserEntity.fromJson({
+        'id': doc.id,
+        ...data,
+        'createdAt': (data['createdAt'] as Timestamp)
+            .toDate()
+            .toIso8601String(),
+        if (data['updatedAt'] != null)
+          'updatedAt': (data['updatedAt'] as Timestamp)
+              .toDate()
+              .toIso8601String(),
+      });
+    }
+    return null;
   } catch (_) {
     return null;
   }

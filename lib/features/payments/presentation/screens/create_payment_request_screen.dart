@@ -44,27 +44,6 @@ class _CreatePaymentRequestScreenState
       final amount = double.parse(_amountController.text);
       final description = _descriptionController.text.trim();
 
-      // If "Receive", I am requester (from). If "Pay", I am payer (to)?
-      // Wait, let's stick to the entity definition:
-      // Entity has fromUserId and toUserId.
-      // Usually "Payment Request" means:
-      // "Receive": I (from) ask You (to) for money.
-      // "Pay": I (from) tell You (to) that I owe you / I am recording a debt.
-      // Actually, let's look at the types:
-      // pay: "I want to PAY someone" -> Record that I owe them? Or I sent money?
-      // receive: "I want to RECEIVE money" -> Standard request.
-
-      // Let's standardise:
-      // If Type is RECEIVE (User wants money FROM friend):
-      // fromUser = Current User
-      // toUser = Friend
-      // type = receive
-
-      // If Type is PAY (User wants to record they OWE friend):
-      // formUser = Current User
-      // toUser = Friend
-      // type = pay
-
       final request = PaymentRequestEntity(
         id: const Uuid()
             .v4(), // We might need uuid package or let firestore gen
@@ -76,17 +55,6 @@ class _CreatePaymentRequestScreenState
         status: PaymentRequestStatus.pending,
         createdAt: DateTime.now(),
       );
-
-      // We will let the repository handle ID generation if we pass empty ID or handle it there.
-      // But repo uses .add() which generates ID.
-      // So we can pass empty string for ID in entity if we modify repo,
-      // OR we just use uuid here.
-      // Since repo uses .add(), the ID in entity might be ignored or defined.
-      // Let's look at repo: .add({...}) -> ID is gen by firestore.
-      // The entity passed to createPaymentRequest has an ID but it's not used in .add() map!
-      // Wait, repo: 'fromUserId': request.fromUserId...
-      // It does NOT save request.id.
-      // So passing any string here is fine, Firestore will make a new one.
 
       await ref
           .read(createPaymentRequestControllerProvider.notifier)
@@ -161,7 +129,7 @@ class _CreatePaymentRequestScreenState
               ),
               decoration: const InputDecoration(
                 labelText: 'Amount',
-                prefixText: '\$ ',
+                prefixText: '₹ ',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {

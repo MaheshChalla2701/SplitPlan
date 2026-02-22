@@ -99,7 +99,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 controller: _amountController,
                 decoration: const InputDecoration(
                   labelText: 'Amount',
-                  prefixText: '\$ ',
+                  prefixText: '₹ ',
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,

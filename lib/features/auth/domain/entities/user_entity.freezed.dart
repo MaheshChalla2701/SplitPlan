@@ -27,6 +27,7 @@ mixin _$UserEntity {
   String get username => throw _privateConstructorUsedError;
   String? get phoneNumber => throw _privateConstructorUsedError;
   String? get avatarUrl => throw _privateConstructorUsedError;
+  String? get upiId => throw _privateConstructorUsedError;
   bool get isSearchable => throw _privateConstructorUsedError;
   bool get isManual => throw _privateConstructorUsedError;
   String? get ownerId => throw _privateConstructorUsedError;
@@ -58,6 +59,7 @@ abstract class $UserEntityCopyWith<$Res> {
     String username,
     String? phoneNumber,
     String? avatarUrl,
+    String? upiId,
     bool isSearchable,
     bool isManual,
     String? ownerId,
@@ -88,6 +90,7 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
     Object? username = null,
     Object? phoneNumber = freezed,
     Object? avatarUrl = freezed,
+    Object? upiId = freezed,
     Object? isSearchable = null,
     Object? isManual = null,
     Object? ownerId = freezed,
@@ -120,6 +123,10 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
             avatarUrl: freezed == avatarUrl
                 ? _value.avatarUrl
                 : avatarUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            upiId: freezed == upiId
+                ? _value.upiId
+                : upiId // ignore: cast_nullable_to_non_nullable
                       as String?,
             isSearchable: null == isSearchable
                 ? _value.isSearchable
@@ -167,6 +174,7 @@ abstract class _$$UserEntityImplCopyWith<$Res>
     String username,
     String? phoneNumber,
     String? avatarUrl,
+    String? upiId,
     bool isSearchable,
     bool isManual,
     String? ownerId,
@@ -196,6 +204,7 @@ class __$$UserEntityImplCopyWithImpl<$Res>
     Object? username = null,
     Object? phoneNumber = freezed,
     Object? avatarUrl = freezed,
+    Object? upiId = freezed,
     Object? isSearchable = null,
     Object? isManual = null,
     Object? ownerId = freezed,
@@ -228,6 +237,10 @@ class __$$UserEntityImplCopyWithImpl<$Res>
         avatarUrl: freezed == avatarUrl
             ? _value.avatarUrl
             : avatarUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        upiId: freezed == upiId
+            ? _value.upiId
+            : upiId // ignore: cast_nullable_to_non_nullable
                   as String?,
         isSearchable: null == isSearchable
             ? _value.isSearchable
@@ -268,6 +281,7 @@ class _$UserEntityImpl implements _UserEntity {
     required this.username,
     this.phoneNumber,
     this.avatarUrl,
+    this.upiId,
     this.isSearchable = true,
     this.isManual = false,
     this.ownerId,
@@ -292,6 +306,8 @@ class _$UserEntityImpl implements _UserEntity {
   @override
   final String? avatarUrl;
   @override
+  final String? upiId;
+  @override
   @JsonKey()
   final bool isSearchable;
   @override
@@ -315,7 +331,7 @@ class _$UserEntityImpl implements _UserEntity {
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, isSearchable: $isSearchable, isManual: $isManual, ownerId: $ownerId, friends: $friends, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, upiId: $upiId, isSearchable: $isSearchable, isManual: $isManual, ownerId: $ownerId, friends: $friends, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -332,6 +348,7 @@ class _$UserEntityImpl implements _UserEntity {
                 other.phoneNumber == phoneNumber) &&
             (identical(other.avatarUrl, avatarUrl) ||
                 other.avatarUrl == avatarUrl) &&
+            (identical(other.upiId, upiId) || other.upiId == upiId) &&
             (identical(other.isSearchable, isSearchable) ||
                 other.isSearchable == isSearchable) &&
             (identical(other.isManual, isManual) ||
@@ -354,6 +371,7 @@ class _$UserEntityImpl implements _UserEntity {
     username,
     phoneNumber,
     avatarUrl,
+    upiId,
     isSearchable,
     isManual,
     ownerId,
@@ -384,6 +402,7 @@ abstract class _UserEntity implements UserEntity {
     required final String username,
     final String? phoneNumber,
     final String? avatarUrl,
+    final String? upiId,
     final bool isSearchable,
     final bool isManual,
     final String? ownerId,
@@ -407,6 +426,8 @@ abstract class _UserEntity implements UserEntity {
   String? get phoneNumber;
   @override
   String? get avatarUrl;
+  @override
+  String? get upiId;
   @override
   bool get isSearchable;
   @override

@@ -9,6 +9,7 @@ abstract class AuthRepository {
     String name,
     String username,
     String? phoneNumber,
+    String? upiId,
   );
   Future<void> signOut();
   Future<void> sendPasswordResetEmail(String email);

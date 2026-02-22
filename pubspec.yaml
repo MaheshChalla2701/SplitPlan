@@ -55,6 +55,10 @@ dependencies:
   equatable: ^2.0.7
   intl: ^0.20.1
   google_fonts: ^6.2.1
+  url_launcher: ^6.3.2
+  upi_india:
+    path: plugins/upi_india
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:

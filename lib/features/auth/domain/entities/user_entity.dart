@@ -12,6 +12,7 @@ class UserEntity with _$UserEntity {
     required String username,
     String? phoneNumber,
     String? avatarUrl,
+    String? upiId,
     @Default(true) bool isSearchable,
     @Default(false) bool isManual,
     String? ownerId,

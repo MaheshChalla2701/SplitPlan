@@ -20,6 +20,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _usernameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _upiController = TextEditingController();
 
   bool _obscurePassword = true;
   PasswordStrength _passwordStrength = PasswordStrength.weak;
@@ -31,6 +32,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _usernameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _upiController.dispose();
     super.dispose();
   }
 
@@ -46,6 +48,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             _phoneController.text.trim().isEmpty
                 ? null
                 : _phoneController.text.trim(),
+            _upiController.text.trim().isEmpty
+                ? null
+                : _upiController.text.trim(),
           );
     }
   }
@@ -183,6 +188,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ),
                     keyboardType: TextInputType.phone,
                     validator: FormValidators.validatePhone,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // UPI ID field (optional)
+                  TextFormField(
+                    controller: _upiController,
+                    decoration: const InputDecoration(
+                      labelText: 'UPI ID',
+                      hintText: 'e.g. username@bank',
+                      prefixIcon: Icon(Icons.payment_outlined),
+                      helperText: 'For receiving payments from friends',
+                    ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 16),
 

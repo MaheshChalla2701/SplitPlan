@@ -91,7 +91,7 @@ final loginControllerProvider =
     );
 
 typedef _$LoginController = AutoDisposeNotifier<AsyncValue<void>>;
-String _$signupControllerHash() => r'72786b63fa6308b7dbaf5d2e501bced8f3624f5c';
+String _$signupControllerHash() => r'f448426716bf24ef49b6162b0b3566bd657c9aae';
 
 /// See also [SignupController].
 @ProviderFor(SignupController)

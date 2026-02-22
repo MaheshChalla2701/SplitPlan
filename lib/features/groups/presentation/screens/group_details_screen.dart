@@ -62,7 +62,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                               title: Text(expense.description),
                               subtitle: Text('Paid by you'),
                               trailing: Text(
-                                '\$${expense.amount.toStringAsFixed(2)}',
+                                '₹${expense.amount.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -118,7 +118,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      '\$${amount.abs().toStringAsFixed(2)}',
+                                      '₹${amount.abs().toStringAsFixed(2)}',
                                       style: TextStyle(
                                         color: color,
                                         fontWeight: FontWeight.bold,

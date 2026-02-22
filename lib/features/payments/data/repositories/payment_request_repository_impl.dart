@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:developer' as developer;
 import '../../domain/entities/payment_request_entity.dart';
 import '../../domain/repositories/payment_request_repository.dart';
 
@@ -60,7 +61,7 @@ class PaymentRequestRepositoryImpl implements PaymentRequestRepository {
           }
         } catch (e) {
           // Ignore error, proceed with default status
-          print('Error checking auto-accept: $e');
+          developer.log('Error checking auto-accept', error: e);
         }
       }
 

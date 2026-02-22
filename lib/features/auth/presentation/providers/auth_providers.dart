@@ -61,12 +61,13 @@ class SignupController extends _$SignupController {
     String name,
     String username,
     String? phoneNumber,
+    String? upiId,
   ) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
       () => ref
           .read(authRepositoryProvider)
-          .signUpWithEmail(email, password, name, username, phoneNumber),
+          .signUpWithEmail(email, password, name, username, phoneNumber, upiId),
     );
   }
 }

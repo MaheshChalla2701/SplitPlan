@@ -260,7 +260,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           BoxShadow(
                             color: Theme.of(
                               context,
-                            ).colorScheme.primary.withOpacity(0.3),
+                            ).colorScheme.primary.withValues(alpha: 0.3),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -283,18 +283,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  '${netBalance < 0 ? '-' : ''}\$${netBalance.abs().toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28, // Slightly smaller font
-                                    fontWeight: FontWeight.bold,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '${netBalance < 0 ? '-' : ''}₹${netBalance.abs().toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
                                   ),
                                 ),
                                 Text(
                                   netBalance >= 0 ? 'You are owed' : 'You owe',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -339,12 +344,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         const SizedBox(width: 8),
                                         Flexible(
                                           child: Text(
-                                            '\$${toPay.toStringAsFixed(2)}',
+                                            '₹${toPay.toStringAsFixed(2)}',
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 18, // Increased from 14
                                             ),
+                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
@@ -377,12 +383,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         const SizedBox(width: 8),
                                         Flexible(
                                           child: Text(
-                                            '\$${toReceive.toStringAsFixed(2)}',
+                                            '₹${toReceive.toStringAsFixed(2)}',
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 18, // Increased from 14
                                             ),
+                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
@@ -438,9 +445,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       if (latest.status == PaymentRequestStatus.accepted) {
                         if (latest.type == PaymentRequestType.receive) {
                           if (latest.fromUserId == currentUserId) {
-                            subtitle = 'They owe you \$${latest.amount}';
+                            subtitle = 'They owe you ₹${latest.amount}';
                           } else {
-                            subtitle = 'You owe \$${latest.amount}';
+                            subtitle = 'You owe ₹${latest.amount}';
                           }
                         } else {
                           subtitle = 'Payment settled';
@@ -450,7 +457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         if (latest.toUserId == currentUserId) {
                           subtitle = 'Request pending';
                         } else {
-                          subtitle = 'You requested \$${latest.amount}';
+                          subtitle = 'You requested ₹${latest.amount}';
                         }
                       } else {
                         subtitle = latest.status.name.toUpperCase();
@@ -513,9 +520,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                       return Card(
                         color: isSelected
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer.withOpacity(0.5)
+                            ? Theme.of(context).colorScheme.primaryContainer
+                                  .withValues(alpha: 0.5)
                             : null,
                         margin: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -856,7 +862,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                               ),
                               subtitle: Text(
-                                '${isIncoming ? "Requested from you" : "You requested"} \$${request.amount}${request.description != null && request.description!.isNotEmpty ? "\n${request.description}" : ""}',
+                                '${isIncoming ? "Requested from you" : "You requested"} ₹${request.amount}${request.description != null && request.description!.isNotEmpty ? "\n${request.description}" : ""}',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -908,8 +914,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         'Pending',
                                         style: TextStyle(fontSize: 10),
                                       ),
-                                      backgroundColor: Colors.orange
-                                          .withOpacity(0.1),
+                                      backgroundColor: Colors.orange.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       labelPadding: EdgeInsets.zero,
                                     ),
                               onTap: () {
@@ -996,7 +1003,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       trailing: Text(
-                        '\$${amount.toStringAsFixed(2)}',
+                        '₹${amount.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

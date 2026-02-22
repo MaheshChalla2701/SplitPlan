@@ -89,6 +89,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String name,
     String username,
     String? phoneNumber,
+    String? upiId,
   ) async {
     try {
       // First, create the Firebase Auth account
@@ -120,6 +121,7 @@ class AuthRepositoryImpl implements AuthRepository {
           name: name,
           username: username.toLowerCase(),
           phoneNumber: phoneNumber,
+          upiId: upiId,
           createdAt: now,
         );
 
@@ -129,6 +131,7 @@ class AuthRepositoryImpl implements AuthRepository {
           'name': name,
           'username': username.toLowerCase(),
           'phoneNumber': phoneNumber,
+          'upiId': upiId,
           'avatarUrl': null,
           'isSearchable': true,
           'friends': [],

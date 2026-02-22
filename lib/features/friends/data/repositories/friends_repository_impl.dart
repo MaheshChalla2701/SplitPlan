@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:developer' as developer;
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/entities/friendship_request.dart';
 import '../../domain/entities/friendship_entity.dart';
@@ -108,7 +109,7 @@ class FriendsRepositoryImpl implements FriendsRepository {
   @override
   Future<void> acceptFriendRequest(String friendshipId) async {
     try {
-      print('DEBUG: Accepting friendship $friendshipId');
+      developer.log('Accepting friendship $friendshipId');
 
       // First, get the friendship data
       final friendship = await _firestore
@@ -117,7 +118,7 @@ class FriendsRepositoryImpl implements FriendsRepository {
           .get();
 
       if (!friendship.exists) {
-        print('DEBUG: Friendship not found!');
+        developer.log('Friendship not found!');
         throw Exception('Friendship not found');
       }
 
@@ -125,28 +126,28 @@ class FriendsRepositoryImpl implements FriendsRepository {
       final userId = data['userId'] as String;
       final friendId = data['friendId'] as String;
 
-      print('DEBUG: userId=$userId, friendId=$friendId');
+      developer.log('userId=$userId, friendId=$friendId');
 
       // Update status to accepted
       await _firestore.collection('friendships').doc(friendshipId).update({
         'status': 'accepted',
       });
-      print('DEBUG: Updated friendship status to accepted');
+      developer.log('Updated friendship status to accepted');
 
       // Update both users' friends arrays (create if doesn't exist)
       await _firestore.collection('users').doc(userId).set({
         'friends': FieldValue.arrayUnion([friendId]),
       }, SetOptions(merge: true));
-      print('DEBUG: Updated userId friends array');
+      developer.log('Updated userId friends array');
 
       await _firestore.collection('users').doc(friendId).set({
         'friends': FieldValue.arrayUnion([userId]),
       }, SetOptions(merge: true));
-      print('DEBUG: Updated friendId friends array');
+      developer.log('Updated friendId friends array');
 
-      print('DEBUG: Successfully accepted friend request!');
+      developer.log('Successfully accepted friend request!');
     } catch (e) {
-      print('DEBUG: Error accepting friend request: $e');
+      developer.log('Error accepting friend request', error: e);
       throw Exception('Failed to accept friend request: $e');
     }
   }
@@ -549,8 +550,12 @@ class FriendsRepositoryImpl implements FriendsRepository {
             .where('toUserId', isEqualTo: friendId)
             .get();
 
-        for (final doc in allRequestsFrom.docs) batch.delete(doc.reference);
-        for (final doc in allRequestsTo.docs) batch.delete(doc.reference);
+        for (final doc in allRequestsFrom.docs) {
+          batch.delete(doc.reference);
+        }
+        for (final doc in allRequestsTo.docs) {
+          batch.delete(doc.reference);
+        }
 
         // Delete manual user doc
         batch.delete(_firestore.collection('users').doc(friendId));
@@ -585,8 +590,12 @@ class FriendsRepositoryImpl implements FriendsRepository {
           .where('friendId', isEqualTo: userId)
           .get();
 
-      for (final doc in friendshipAsSender.docs) batch.delete(doc.reference);
-      for (final doc in friendshipAsReceiver.docs) batch.delete(doc.reference);
+      for (final doc in friendshipAsSender.docs) {
+        batch.delete(doc.reference);
+      }
+      for (final doc in friendshipAsReceiver.docs) {
+        batch.delete(doc.reference);
+      }
 
       // 4. Commit
       await batch.commit();

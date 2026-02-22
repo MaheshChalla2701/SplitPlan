@@ -220,7 +220,7 @@ final createPaymentRequestControllerProvider =
 typedef _$CreatePaymentRequestController =
     AutoDisposeNotifier<AsyncValue<void>>;
 String _$updatePaymentRequestControllerHash() =>
-    r'264186519773c053307ae8520579ff2197d37732';
+    r'b843463388b99962ee9131d2c6dcb0f8aaf9ed3e';
 
 /// See also [UpdatePaymentRequestController].
 @ProviderFor(UpdatePaymentRequestController)

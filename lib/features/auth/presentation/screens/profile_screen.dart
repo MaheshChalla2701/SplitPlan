@@ -27,6 +27,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           return RefreshIndicator(
             onRefresh: () async {
               // Use refresh instead of invalidate - more targeted
+              // ignore: unused_result
               ref.refresh(authStateProvider);
               // Small delay for visual feedback
               await Future.delayed(const Duration(milliseconds: 300));
@@ -72,6 +73,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label: 'Phone',
                     value: user.phoneNumber!,
                   ),
+                if (user.upiId != null)
+                  _ProfileItem(
+                    icon: Icons.payment,
+                    label: 'UPI ID',
+                    value: user.upiId!,
+                  ),
                 const SizedBox(height: 32),
 
                 // Edit Details Button
@@ -85,6 +92,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     );
                     final phoneController = TextEditingController(
                       text: user.phoneNumber ?? '',
+                    );
+                    final upiController = TextEditingController(
+                      text: user.upiId ?? '',
                     );
 
                     showDialog(
@@ -118,6 +128,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                               keyboardType: TextInputType.phone,
                             ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: upiController,
+                              decoration: const InputDecoration(
+                                labelText: 'UPI ID',
+                                prefixIcon: Icon(Icons.payment),
+                              ),
+                              keyboardType: TextInputType.emailAddress,
+                            ),
                           ],
                         ),
                         actions: [
@@ -132,6 +151,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   .trim()
                                   .toLowerCase();
                               final phone = phoneController.text.trim();
+                              final upi = upiController.text.trim();
 
                               if (name.isEmpty || username.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -184,6 +204,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       'phoneNumber': phone.isNotEmpty
                                           ? phone
                                           : null,
+                                      'upiId': upi.isNotEmpty ? upi : null,
                                     });
 
                                 if (!context.mounted) return;

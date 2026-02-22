@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import 'package:upi_india/upi_india.dart';
 
 import '../../../payments/domain/entities/payment_request_entity.dart';
 import '../../../payments/presentation/providers/payment_request_providers.dart';
@@ -178,8 +179,9 @@ class FriendDetailScreen extends ConsumerWidget {
 
                     for (final request in allFriendRequests) {
                       if (request.status != PaymentRequestStatus.accepted &&
-                          request.status != PaymentRequestStatus.paid)
+                          request.status != PaymentRequestStatus.paid) {
                         continue;
+                      }
 
                       if (request.fromUserId == currentUserId) {
                         if (request.type == PaymentRequestType.receive ||
@@ -230,7 +232,7 @@ class FriendDetailScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -249,7 +251,7 @@ class FriendDetailScreen extends ConsumerWidget {
                                         color: Theme.of(context)
                                             .colorScheme
                                             .onPrimaryContainer
-                                            .withOpacity(0.7),
+                                            .withValues(alpha: 0.7),
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -270,14 +272,19 @@ class FriendDetailScreen extends ConsumerWidget {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text(
-                                      '\$${netBalance.abs().toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        color: netBalance >= 0
-                                            ? Colors.green[700]
-                                            : Colors.red[700],
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        '₹${netBalance.abs().toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          color: netBalance >= 0
+                                              ? Colors.green[700]
+                                              : Colors.red[700],
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
                                       ),
                                     ),
                                     if (netBalance != 0 &&
@@ -287,7 +294,7 @@ class FriendDetailScreen extends ConsumerWidget {
                                         onPressed: () => _showSettleDialog(
                                           context,
                                           ref,
-                                          friendId,
+                                          friend,
                                           netBalance,
                                         ),
                                         icon: const Icon(
@@ -452,7 +459,7 @@ class FriendDetailScreen extends ConsumerWidget {
                                                   backgroundColor:
                                                       _getStatusColor(
                                                         request.status,
-                                                      ).withOpacity(0.2),
+                                                      ).withValues(alpha: 0.2),
                                                   child: Icon(
                                                     (request.type ==
                                                                 PaymentRequestType
@@ -678,7 +685,7 @@ class FriendDetailScreen extends ConsumerWidget {
                     onPressed: null,
                     child: CircularProgressIndicator(),
                   ),
-                  error: (_, __) => FloatingActionButton.extended(
+                  error: (err, stack) => FloatingActionButton.extended(
                     onPressed: () async {
                       await ref
                           .read(sendFriendRequestControllerProvider.notifier)
@@ -829,12 +836,177 @@ class FriendDetailScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _showUpiAppPicker(
+    BuildContext context,
+    WidgetRef ref,
+    String upiId,
+    String receiverName,
+    double amount,
+    String fromUserId,
+    String toUserId,
+  ) async {
+    final UpiIndia upiIndia = UpiIndia();
+    List<UpiApp> apps = [];
+    try {
+      apps = await upiIndia.getAllUpiApps(mandatoryTransactionId: false);
+    } catch (_) {
+      apps = [];
+    }
+
+    if (!context.mounted) return;
+
+    if (apps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No UPI apps found. Please install PhonePe, GPay or Paytm.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final UpiApp? selectedApp = await showModalBottomSheet<UpiApp>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Choose a UPI App',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Flexible(
+              child: GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: apps.length,
+                itemBuilder: (ctx, i) {
+                  final app = apps[i];
+                  return GestureDetector(
+                    onTap: () => Navigator.pop(ctx, app),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(app.icon, width: 48, height: 48),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          app.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selectedApp == null || !context.mounted) return;
+
+    final String txnRef = const Uuid().v4().substring(0, 35);
+    UpiResponse? response;
+    try {
+      response = await upiIndia.startTransaction(
+        app: selectedApp,
+        receiverUpiId: upiId,
+        receiverName: receiverName,
+        transactionRefId: txnRef,
+        transactionNote: 'SplitPlan Settlement',
+        amount: amount,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Payment error: $e')));
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    final String? statusStr = response.status;
+    if (statusStr == UpiPaymentStatus.SUCCESS) {
+      // Auto-create an already-accepted settlement to update net balance immediately
+      try {
+        final request = PaymentRequestEntity(
+          id: const Uuid().v4(),
+          fromUserId: fromUserId,
+          toUserId: toUserId,
+          amount: amount,
+          type: PaymentRequestType.settle,
+          description: 'UPI Settlement (TxnRef: $txnRef)',
+          status: PaymentRequestStatus.accepted,
+          createdAt: DateTime.now(),
+        );
+        await ref
+            .read(createPaymentRequestControllerProvider.notifier)
+            .createRequest(request);
+        if (context.mounted) {
+          Navigator.pop(context); // Close settle dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Payment successful! Net balance updated.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Payment done, but recording failed: $e')),
+          );
+        }
+      }
+    } else if (statusStr == UpiPaymentStatus.SUBMITTED) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⏳ Payment submitted. Will update once bank confirms.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '❌ Payment failed or cancelled. Status: ${statusStr ?? "Unknown"}',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _showSettleDialog(
     BuildContext context,
     WidgetRef ref,
-    String friendId,
+    UserEntity friend,
     double netBalance,
   ) async {
+    final friendId = friend.id;
     final isOwesYou = netBalance >= 0;
     final maxAmount = netBalance.abs();
 
@@ -866,7 +1038,7 @@ class FriendDetailScreen extends ConsumerWidget {
                 ),
                 decoration: const InputDecoration(
                   labelText: 'Amount',
-                  prefixText: '\$',
+                  prefixText: '₹ ',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -880,6 +1052,135 @@ class FriendDetailScreen extends ConsumerWidget {
                   return null;
                 },
               ),
+              if (!isOwesYou &&
+                  friend.upiId != null &&
+                  friend.upiId!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1),
+                        Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.05),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        // Unfocus keyboard
+                        FocusScope.of(context).unfocus();
+                        final amount =
+                            double.tryParse(amountController.text) ?? 0.0;
+                        if (amount > 0) {
+                          final currentUser = ref.read(authStateProvider).value;
+                          if (currentUser != null) {
+                            _showUpiAppPicker(
+                              context,
+                              ref,
+                              friend.upiId!,
+                              friend.name,
+                              amount,
+                              currentUser.id, // fromUserId (payer)
+                              friend.id, // toUserId (receiver)
+                            );
+                          }
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please enter a valid amount first',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 20,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.qr_code_scanner,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Pay via UPI',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    friend.upiId!,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                      fontSize: 12,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else if (!isOwesYou) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'No UPI ID found for ${friend.name}.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
             ],
           ),
         ),
@@ -966,9 +1267,9 @@ class FriendDetailScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         label,
@@ -1010,7 +1311,7 @@ class FriendDetailScreen extends ConsumerWidget {
                 ),
                 decoration: const InputDecoration(
                   labelText: 'Amount',
-                  prefixText: '\$',
+                  prefixText: '₹',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -1223,8 +1524,9 @@ class FriendDetailScreen extends ConsumerWidget {
 
                 for (final request in allRequests) {
                   if (request.status != PaymentRequestStatus.accepted &&
-                      request.status != PaymentRequestStatus.paid)
+                      request.status != PaymentRequestStatus.paid) {
                     continue;
+                  }
 
                   if (request.fromUserId == currentUserId) {
                     if (request.type == PaymentRequestType.receive ||
