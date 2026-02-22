@@ -149,7 +149,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     );
                   },
                   icon: const Badge(
-                    // TODO: Wire up real pending count if needed, or just show dot
                     label: Text('!'),
                     isLabelVisible: false,
                     child: Icon(Icons.notifications_outlined),
@@ -225,8 +224,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // This implements the "Hide Balance" part of Soft Delete
                     userBalances.removeWhere((key, value) {
                       final isFriend = friends.any((f) => f.id == key);
-                      // TODO: If we ever have group-based requests that aren't tied to friendship,
-                      // we might need to check groups too. For now, 1:1 requests require friendship.
                       return !isFriend;
                     });
 
@@ -480,7 +477,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   // 3. Map Groups to ConversationItems
                   final groupItems = groups.map((group) {
-                    // TODO: Fetch real group expense activity.
                     // For now, use createdAt.
                     return _ConversationItem(
                       id: group.id,

@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Splitplan needs access to your camera to scan receipts.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Splitplan needs access to your photo library to pick receipt images.</string>
 </dict>
 </plist>

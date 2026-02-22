@@ -76,7 +76,6 @@ Future<Map<String, double>> groupBalances(Ref ref, String groupId) async {
 
   // Note: settlements also affect balances, but for now just expenses
   // We need to fetch settlements too
-  // final settlements = await ref.watch(settlementRepositoryProvider).getGroupSettlements(groupId);
 
   // Use ExpenseCalculator
   final calculator = ExpenseCalculator();

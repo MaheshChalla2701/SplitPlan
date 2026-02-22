@@ -7,6 +7,9 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../domain/entities/payment_request_entity.dart';
 import '../providers/payment_request_providers.dart';
 
+import 'package:image_picker/image_picker.dart';
+import '../../../expenses/domain/services/ocr_service.dart';
+
 class CreatePaymentRequestScreen extends ConsumerStatefulWidget {
   final String friendId;
 
@@ -24,12 +27,51 @@ class _CreatePaymentRequestScreenState
   final _descriptionController = TextEditingController();
   PaymentRequestType _type = PaymentRequestType.receive;
   bool _isLoading = false;
+  bool _isScanning = false;
 
   @override
   void dispose() {
     _amountController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _scanReceipt() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(source: ImageSource.camera);
+    if (xfile == null) return;
+
+    setState(() => _isScanning = true);
+
+    try {
+      final ocrService = ref.read(ocrServiceProvider);
+      final amount = await ocrService.extractTotalAmount(xfile.path);
+
+      if (mounted) {
+        if (amount != null) {
+          _amountController.text = amount.toStringAsFixed(2);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Amount extracted from receipt!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not find a valid amount in the image.'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error scanning receipt: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    }
   }
 
   Future<void> _submitPayload() async {
@@ -127,10 +169,20 @@ class _CreatePaymentRequestScreenState
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Amount',
                 prefixText: '₹ ',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                suffixIcon: _isScanning
+                    ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.document_scanner_outlined),
+                        tooltip: 'Scan Receipt',
+                        onPressed: _isLoading ? null : _scanReceipt,
+                      ),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {

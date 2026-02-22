@@ -6,6 +6,9 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../groups/presentation/providers/group_providers.dart';
 import '../providers/expense_providers.dart';
 
+import 'package:image_picker/image_picker.dart';
+import '../../domain/services/ocr_service.dart';
+
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final String groupId;
 
@@ -19,12 +22,51 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
+  bool _isScanning = false;
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
     super.dispose();
+  }
+
+  Future<void> _scanReceipt() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(source: ImageSource.camera);
+    if (xfile == null) return;
+
+    setState(() => _isScanning = true);
+
+    try {
+      final ocrService = ref.read(ocrServiceProvider);
+      final amount = await ocrService.extractTotalAmount(xfile.path);
+
+      if (mounted) {
+        if (amount != null) {
+          _amountController.text = amount.toStringAsFixed(2);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Amount extracted from receipt!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not find a valid amount in the image.'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error scanning receipt: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    }
   }
 
   void _submit() {
@@ -97,9 +139,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _amountController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Amount',
                   prefixText: '₹ ',
+                  suffixIcon: _isScanning
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.document_scanner_outlined),
+                          tooltip: 'Scan Receipt',
+                          onPressed: state.isLoading ? null : _scanReceipt,
+                        ),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,

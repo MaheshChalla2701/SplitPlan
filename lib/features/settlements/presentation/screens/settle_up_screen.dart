@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:upi_india/upi_india.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:splitplan/features/auth/presentation/providers/auth_providers.dart';
 import 'package:splitplan/features/friends/presentation/providers/friends_providers.dart';
 import 'package:splitplan/features/settlements/presentation/providers/settlement_providers.dart';
+import 'package:splitplan/features/settlements/domain/services/nudge_service.dart';
 
 class SettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
@@ -40,145 +40,6 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   void dispose() {
     _amountController.dispose();
     super.dispose();
-  }
-
-  Future<void> _showUpiAppPicker(
-    String upiId,
-    String receiverName,
-    double amount,
-  ) async {
-    final UpiIndia upiIndia = UpiIndia();
-    List<UpiApp> apps = [];
-    try {
-      apps = await upiIndia.getAllUpiApps(mandatoryTransactionId: false);
-    } catch (_) {
-      apps = [];
-    }
-
-    if (!mounted) return;
-
-    if (apps.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No UPI apps found. Please install PhonePe, GPay or Paytm.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    // Show app picker bottom sheet
-    final UpiApp? selectedApp = await showModalBottomSheet<UpiApp>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Choose a UPI App',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Flexible(
-              child: GridView.builder(
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: apps.length,
-                itemBuilder: (ctx, i) {
-                  final app = apps[i];
-                  return GestureDetector(
-                    onTap: () => Navigator.pop(ctx, app),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.memory(app.icon, width: 48, height: 48),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          app.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (selectedApp == null || !mounted) return;
-
-    // Start transaction
-    final String txnRef = const Uuid().v4().substring(0, 35); // max 35 chars
-    UpiResponse? response;
-    try {
-      response = await upiIndia.startTransaction(
-        app: selectedApp,
-        receiverUpiId: upiId,
-        receiverName: receiverName,
-        transactionRefId: txnRef,
-        transactionNote: 'SplitPlan Settlement',
-        amount: amount,
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Payment error: $e')));
-      }
-      return;
-    }
-
-    if (!mounted) return;
-
-    final String? statusStr = response.status;
-    if (statusStr == UpiPaymentStatus.SUCCESS) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Payment successful! Recording settlement...'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      // Auto-record the settlement
-      _submit();
-    } else if (statusStr == UpiPaymentStatus.SUBMITTED) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⏳ Payment submitted. Will update once cleared.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '❌ Payment failed or cancelled. Status: ${statusStr ?? "Unknown"}',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   void _submit() {
@@ -267,126 +128,218 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Smart UPI Pay Button
               friendAsync.when(
                 data: (friend) {
-                  if (friend?.upiId != null && friend!.upiId!.isNotEmpty) {
-                    return Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.1),
-                            Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.05),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            FocusScope.of(context).unfocus();
-                            final amount =
-                                double.tryParse(_amountController.text) ?? 0.0;
-                            if (amount > 0) {
-                              _showUpiAppPicker(
-                                friend.upiId!,
-                                friend.name,
-                                amount,
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Please enter a valid amount first',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 16,
-                              horizontal: 20,
+                  final hasUpi =
+                      friend?.upiId != null && friend!.upiId!.isNotEmpty;
+                  final hasPhone =
+                      friend?.phoneNumber != null &&
+                      friend!.phoneNumber!.isNotEmpty;
+
+                  if (!hasUpi && !hasPhone) {
+                    return Text(
+                      'No UPI ID or Phone found for ${friend?.name ?? "this user"}.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (hasUpi)
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.15),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.05),
+                              ],
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary
-                                        .withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.qr_code_scanner,
-                                    color: Theme.of(
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.2),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                FocusScope.of(context).unfocus();
+                                HapticFeedback.lightImpact();
+                                Clipboard.setData(
+                                  ClipboardData(text: friend.upiId!),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        const Text(
+                                          'UPI ID copied to clipboard',
+                                        ),
+                                      ],
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    backgroundColor: Theme.of(
                                       context,
                                     ).colorScheme.primary,
-                                    size: 24,
                                   ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Pay via UPI',
-                                        style: TextStyle(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Copy UPI ID',
+                                            style: TextStyle(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            friend.upiId!,
+                                            style: TextStyle(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurface,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 16,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        friend.upiId!,
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text(
+                                        'Copy',
                                         style: TextStyle(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.6),
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
                                           fontSize: 12,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 14,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.5),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }
-                  return Text(
-                    'No UPI ID found for ${friend?.name ?? "this user"}.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+
+                      if (hasUpi && hasPhone) const SizedBox(height: 12),
+
+                      if (hasPhone)
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.green[50],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () async {
+                                FocusScope.of(context).unfocus();
+                                HapticFeedback.lightImpact();
+                                final currentUpiId = ref
+                                    .read(authStateProvider)
+                                    .value
+                                    ?.upiId;
+                                final amount =
+                                    double.tryParse(_amountController.text) ??
+                                    widget.amount;
+
+                                await ref
+                                    .read(nudgeServiceProvider)
+                                    .sendWhatsAppNudge(
+                                      phone: friend.phoneNumber!,
+                                      friendName: friend.name,
+                                      amount: amount,
+                                      upiId: currentUpiId,
+                                    );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                  horizontal: 20,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.notifications_active_outlined,
+                                      color: Colors.green[700],
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Send Reminder',
+                                      style: TextStyle(
+                                        color: Colors.green[700],
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 },
                 loading: () => const SizedBox.shrink(),

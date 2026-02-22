@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
-import 'package:upi_india/upi_india.dart';
-
 import '../../../payments/domain/entities/payment_request_entity.dart';
 import '../../../payments/presentation/providers/payment_request_providers.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/entities/friendship_entity.dart';
 import '../../presentation/providers/friends_providers.dart';
+import '../../../settlements/domain/services/nudge_service.dart';
 
 class FriendDetailScreen extends ConsumerWidget {
   final String friendId;
@@ -290,35 +290,88 @@ class FriendDetailScreen extends ConsumerWidget {
                                     if (netBalance != 0 &&
                                         isMutuallyConnected) ...[
                                       const SizedBox(height: 8),
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _showSettleDialog(
-                                          context,
-                                          ref,
-                                          friend,
-                                          netBalance,
-                                        ),
-                                        icon: const Icon(
-                                          Icons.handshake,
-                                          size: 16,
-                                        ),
-                                        label: Text(
-                                          netBalance < 0
-                                              ? 'Settle Up'
-                                              : 'Record Payment',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: Colors.green[50],
-                                          foregroundColor: Colors.green[700],
-                                          visualDensity: VisualDensity.compact,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
+                                      Wrap(
+                                        alignment: WrapAlignment.end,
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.end,
+                                        children: [
+                                          if (netBalance > 0 &&
+                                              friend.phoneNumber != null)
+                                            IconButton(
+                                              onPressed: () async {
+                                                final currentUserPos = ref.read(
+                                                  authStateProvider,
+                                                );
+                                                final currentUpiId =
+                                                    currentUserPos.value?.upiId;
+
+                                                await ref
+                                                    .read(nudgeServiceProvider)
+                                                    .sendWhatsAppNudge(
+                                                      phone:
+                                                          friend.phoneNumber!,
+                                                      friendName: friend.name,
+                                                      amount: netBalance.abs(),
+                                                      upiId: currentUpiId,
+                                                    );
+                                              },
+                                              icon: const Icon(
+                                                Icons
+                                                    .notifications_active_outlined,
+                                                size: 20,
+                                              ),
+                                              style: IconButton.styleFrom(
+                                                backgroundColor:
+                                                    Colors.green[100],
+                                                foregroundColor:
+                                                    Colors.green[800],
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                              ),
+                                              tooltip: 'Send Reminder',
+                                            ),
+                                          FilledButton.tonalIcon(
+                                            onPressed: () => _showSettleDialog(
+                                              context,
+                                              ref,
+                                              friend,
+                                              netBalance,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.handshake,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              netBalance < 0
+                                                  ? 'Settle Up'
+                                                  : 'Record Payment',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: Colors.green[50],
+                                              foregroundColor:
+                                                  Colors.green[700],
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6,
+                                                  ),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
                                           ),
-                                          minimumSize: Size.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ],
@@ -836,170 +889,6 @@ class FriendDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showUpiAppPicker(
-    BuildContext context,
-    WidgetRef ref,
-    String upiId,
-    String receiverName,
-    double amount,
-    String fromUserId,
-    String toUserId,
-  ) async {
-    final UpiIndia upiIndia = UpiIndia();
-    List<UpiApp> apps = [];
-    try {
-      apps = await upiIndia.getAllUpiApps(mandatoryTransactionId: false);
-    } catch (_) {
-      apps = [];
-    }
-
-    if (!context.mounted) return;
-
-    if (apps.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No UPI apps found. Please install PhonePe, GPay or Paytm.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final UpiApp? selectedApp = await showModalBottomSheet<UpiApp>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Choose a UPI App',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Flexible(
-              child: GridView.builder(
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: apps.length,
-                itemBuilder: (ctx, i) {
-                  final app = apps[i];
-                  return GestureDetector(
-                    onTap: () => Navigator.pop(ctx, app),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.memory(app.icon, width: 48, height: 48),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          app.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (selectedApp == null || !context.mounted) return;
-
-    final String txnRef = const Uuid().v4().substring(0, 35);
-    UpiResponse? response;
-    try {
-      response = await upiIndia.startTransaction(
-        app: selectedApp,
-        receiverUpiId: upiId,
-        receiverName: receiverName,
-        transactionRefId: txnRef,
-        transactionNote: 'SplitPlan Settlement',
-        amount: amount,
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Payment error: $e')));
-      }
-      return;
-    }
-
-    if (!context.mounted) return;
-
-    final String? statusStr = response.status;
-    if (statusStr == UpiPaymentStatus.SUCCESS) {
-      // Auto-create an already-accepted settlement to update net balance immediately
-      try {
-        final request = PaymentRequestEntity(
-          id: const Uuid().v4(),
-          fromUserId: fromUserId,
-          toUserId: toUserId,
-          amount: amount,
-          type: PaymentRequestType.settle,
-          description: 'UPI Settlement (TxnRef: $txnRef)',
-          status: PaymentRequestStatus.accepted,
-          createdAt: DateTime.now(),
-        );
-        await ref
-            .read(createPaymentRequestControllerProvider.notifier)
-            .createRequest(request);
-        if (context.mounted) {
-          Navigator.pop(context); // Close settle dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Payment successful! Net balance updated.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Payment done, but recording failed: $e')),
-          );
-        }
-      }
-    } else if (statusStr == UpiPaymentStatus.SUBMITTED) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⏳ Payment submitted. Will update once bank confirms.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '❌ Payment failed or cancelled. Status: ${statusStr ?? "Unknown"}',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   Future<void> _showSettleDialog(
     BuildContext context,
     WidgetRef ref,
@@ -1059,12 +948,14 @@ class FriendDetailScreen extends ConsumerWidget {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                       colors: [
                         Theme.of(
                           context,
-                        ).colorScheme.primary.withValues(alpha: 0.1),
+                        ).colorScheme.primary.withValues(alpha: 0.15),
                         Theme.of(
                           context,
                         ).colorScheme.primary.withValues(alpha: 0.05),
@@ -1073,86 +964,70 @@ class FriendDetailScreen extends ConsumerWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).colorScheme.primary.withValues(alpha: 0.3),
+                      ).colorScheme.primary.withValues(alpha: 0.2),
+                      width: 1.5,
                     ),
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       onTap: () {
-                        // Unfocus keyboard
                         FocusScope.of(context).unfocus();
-                        final amount =
-                            double.tryParse(amountController.text) ?? 0.0;
-                        if (amount > 0) {
-                          final currentUser = ref.read(authStateProvider).value;
-                          if (currentUser != null) {
-                            _showUpiAppPicker(
-                              context,
-                              ref,
-                              friend.upiId!,
-                              friend.name,
-                              amount,
-                              currentUser.id, // fromUserId (payer)
-                              friend.id, // toUserId (receiver)
-                            );
-                          }
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Please enter a valid amount first',
-                              ),
+                        HapticFeedback.lightImpact();
+                        Clipboard.setData(ClipboardData(text: friend.upiId!));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text('UPI ID copied to clipboard'),
+                              ],
                             ),
-                          );
-                        }
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                          ),
+                        );
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 20,
-                        ),
+                        padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.qr_code_scanner,
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Pay via UPI',
+                                    'Copy UPI ID',
                                     style: TextStyle(
                                       color: Theme.of(
                                         context,
                                       ).colorScheme.primary,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                      fontSize: 13,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     friend.upiId!,
                                     style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.6),
-                                      fontSize: 12,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1160,12 +1035,23 @@ class FriendDetailScreen extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 14,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.5),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'Copy',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ),
                           ],
                         ),
