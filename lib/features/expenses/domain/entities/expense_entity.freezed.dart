@@ -27,6 +27,7 @@ mixin _$ExpenseEntity {
   double get amount => throw _privateConstructorUsedError;
   List<PaymentShare> get paidBy => throw _privateConstructorUsedError;
   List<ExpenseShare> get splitBetween => throw _privateConstructorUsedError;
+  List<String> get acceptedBy => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   String get createdBy => throw _privateConstructorUsedError;
 
@@ -54,6 +55,7 @@ abstract class $ExpenseEntityCopyWith<$Res> {
     double amount,
     List<PaymentShare> paidBy,
     List<ExpenseShare> splitBetween,
+    List<String> acceptedBy,
     DateTime createdAt,
     String createdBy,
   });
@@ -80,6 +82,7 @@ class _$ExpenseEntityCopyWithImpl<$Res, $Val extends ExpenseEntity>
     Object? amount = null,
     Object? paidBy = null,
     Object? splitBetween = null,
+    Object? acceptedBy = null,
     Object? createdAt = null,
     Object? createdBy = null,
   }) {
@@ -109,6 +112,10 @@ class _$ExpenseEntityCopyWithImpl<$Res, $Val extends ExpenseEntity>
                 ? _value.splitBetween
                 : splitBetween // ignore: cast_nullable_to_non_nullable
                       as List<ExpenseShare>,
+            acceptedBy: null == acceptedBy
+                ? _value.acceptedBy
+                : acceptedBy // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -139,6 +146,7 @@ abstract class _$$ExpenseEntityImplCopyWith<$Res>
     double amount,
     List<PaymentShare> paidBy,
     List<ExpenseShare> splitBetween,
+    List<String> acceptedBy,
     DateTime createdAt,
     String createdBy,
   });
@@ -164,6 +172,7 @@ class __$$ExpenseEntityImplCopyWithImpl<$Res>
     Object? amount = null,
     Object? paidBy = null,
     Object? splitBetween = null,
+    Object? acceptedBy = null,
     Object? createdAt = null,
     Object? createdBy = null,
   }) {
@@ -193,6 +202,10 @@ class __$$ExpenseEntityImplCopyWithImpl<$Res>
             ? _value._splitBetween
             : splitBetween // ignore: cast_nullable_to_non_nullable
                   as List<ExpenseShare>,
+        acceptedBy: null == acceptedBy
+            ? _value._acceptedBy
+            : acceptedBy // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -216,10 +229,12 @@ class _$ExpenseEntityImpl implements _ExpenseEntity {
     required this.amount,
     required final List<PaymentShare> paidBy,
     required final List<ExpenseShare> splitBetween,
+    final List<String> acceptedBy = const [],
     required this.createdAt,
     required this.createdBy,
   }) : _paidBy = paidBy,
-       _splitBetween = splitBetween;
+       _splitBetween = splitBetween,
+       _acceptedBy = acceptedBy;
 
   factory _$ExpenseEntityImpl.fromJson(Map<String, dynamic> json) =>
       _$$ExpenseEntityImplFromJson(json);
@@ -248,6 +263,15 @@ class _$ExpenseEntityImpl implements _ExpenseEntity {
     return EqualUnmodifiableListView(_splitBetween);
   }
 
+  final List<String> _acceptedBy;
+  @override
+  @JsonKey()
+  List<String> get acceptedBy {
+    if (_acceptedBy is EqualUnmodifiableListView) return _acceptedBy;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_acceptedBy);
+  }
+
   @override
   final DateTime createdAt;
   @override
@@ -255,7 +279,7 @@ class _$ExpenseEntityImpl implements _ExpenseEntity {
 
   @override
   String toString() {
-    return 'ExpenseEntity(id: $id, groupId: $groupId, description: $description, amount: $amount, paidBy: $paidBy, splitBetween: $splitBetween, createdAt: $createdAt, createdBy: $createdBy)';
+    return 'ExpenseEntity(id: $id, groupId: $groupId, description: $description, amount: $amount, paidBy: $paidBy, splitBetween: $splitBetween, acceptedBy: $acceptedBy, createdAt: $createdAt, createdBy: $createdBy)';
   }
 
   @override
@@ -273,6 +297,10 @@ class _$ExpenseEntityImpl implements _ExpenseEntity {
               other._splitBetween,
               _splitBetween,
             ) &&
+            const DeepCollectionEquality().equals(
+              other._acceptedBy,
+              _acceptedBy,
+            ) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.createdBy, createdBy) ||
@@ -289,6 +317,7 @@ class _$ExpenseEntityImpl implements _ExpenseEntity {
     amount,
     const DeepCollectionEquality().hash(_paidBy),
     const DeepCollectionEquality().hash(_splitBetween),
+    const DeepCollectionEquality().hash(_acceptedBy),
     createdAt,
     createdBy,
   );
@@ -315,6 +344,7 @@ abstract class _ExpenseEntity implements ExpenseEntity {
     required final double amount,
     required final List<PaymentShare> paidBy,
     required final List<ExpenseShare> splitBetween,
+    final List<String> acceptedBy,
     required final DateTime createdAt,
     required final String createdBy,
   }) = _$ExpenseEntityImpl;
@@ -334,6 +364,8 @@ abstract class _ExpenseEntity implements ExpenseEntity {
   List<PaymentShare> get paidBy;
   @override
   List<ExpenseShare> get splitBetween;
+  @override
+  List<String> get acceptedBy;
   @override
   DateTime get createdAt;
   @override

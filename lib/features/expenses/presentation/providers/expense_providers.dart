@@ -54,6 +54,7 @@ class ExpenseController extends _$ExpenseController {
         amount: amount,
         paidBy: paymentShares,
         splitBetween: expenseShares,
+        acceptedBy: [user.id],
         createdAt: DateTime.now(),
         createdBy: user.id,
       );
@@ -89,11 +90,71 @@ class ExpenseController extends _$ExpenseController {
         amount: amount,
         paidBy: paymentShares,
         splitBetween: expenseShares,
+        acceptedBy: [user.id],
         createdAt: DateTime.now(),
         createdBy: user.id,
       );
 
       await ref.read(expenseRepositoryProvider).addExpense(expense);
+    });
+  }
+
+  /// Updates an existing expense where each member's share is already computed.
+  Future<void> updateExpenseWithShares({
+    required String expenseId,
+    required String groupId,
+    required String description,
+    required double amount,
+    required String payerId,
+    required Map<String, double> splitShares, // userId -> amount owed
+    required List<String> originalAcceptedBy, // Preserve original accepted list
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final user = ref.read(authStateProvider).value;
+      if (user == null) throw Exception('User not authenticated');
+
+      final paymentShares = [PaymentShare(userId: payerId, amount: amount)];
+
+      final expenseShares = splitShares.entries
+          .map((e) => ExpenseShare(userId: e.key, amount: e.value))
+          .toList();
+
+      // If the creator edits the expense, we usually reset approvals except for them or preserve them.
+      // Let's reset the acceptedBy list to just the person who edited it (the current user),
+      // or optionally keep the ones who still agree. Safest is to reset approvals on edit.
+      final expense = ExpenseEntity(
+        id: expenseId,
+        groupId: groupId,
+        description: description,
+        amount: amount,
+        paidBy: paymentShares,
+        splitBetween: expenseShares,
+        acceptedBy: [user.id],
+        createdAt:
+            DateTime.now(), // Ignored by update usually, or keep original if needed.
+        createdBy: user.id,
+      );
+
+      await ref.read(expenseRepositoryProvider).updateExpense(expense);
+    });
+  }
+
+  Future<void> acceptExpense(String expenseId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final user = ref.read(authStateProvider).value;
+      if (user == null) throw Exception('User not authenticated');
+      await ref
+          .read(expenseRepositoryProvider)
+          .acceptExpense(expenseId, user.id);
+    });
+  }
+
+  Future<void> deleteExpense(String expenseId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(expenseRepositoryProvider).deleteExpense(expenseId);
     });
   }
 }
@@ -108,9 +169,23 @@ Future<Map<String, double>> groupBalances(Ref ref, String groupId) async {
   // Fetch the group membership to get all member IDs
   final group = await ref.watch(groupRepositoryProvider).getGroup(groupId);
 
+  // Filter to only APPROVED expenses:
+  // An expense is approved if everyone who is involved (paidBy or splitBetween)
+  // has their userId in the acceptedBy list.
+  final approvedExpenses = expenses.where((expense) {
+    final involvedIds = <String>{};
+    for (var p in expense.paidBy) {
+      if (p.amount > 0) involvedIds.add(p.userId);
+    }
+    for (var s in expense.splitBetween) {
+      if (s.amount > 0) involvedIds.add(s.userId);
+    }
+    return involvedIds.every((id) => expense.acceptedBy.contains(id));
+  }).toList();
+
   final calculator = ExpenseCalculator();
   final balancesMap = calculator.calculateBalances(
-    expenses,
+    approvedExpenses,
     settlements,
     group.memberIds,
   );

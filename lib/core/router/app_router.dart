@@ -11,6 +11,7 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/auth/presentation/screens/change_password_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/expenses/domain/entities/expense_entity.dart';
 import '../../features/expenses/presentation/screens/add_expense_screen.dart';
 import '../../features/friends/presentation/screens/friend_detail_screen.dart';
 import '../../features/friends/presentation/screens/friend_search_screen.dart';
@@ -129,7 +130,11 @@ GoRouter goRouter(Ref ref) {
             path: 'add-expense',
             builder: (context, state) {
               final groupId = state.pathParameters['id']!;
-              return AddExpenseScreen(groupId: groupId);
+              final existingExpense = state.extra as ExpenseEntity?;
+              return AddExpenseScreen(
+                groupId: groupId,
+                existingExpense: existingExpense,
+              );
             },
           ),
           GoRoute(

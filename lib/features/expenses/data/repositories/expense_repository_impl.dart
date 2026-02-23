@@ -20,6 +20,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       'amount': newExpense.amount,
       'paidBy': newExpense.paidBy.map((e) => e.toJson()).toList(),
       'splitBetween': newExpense.splitBetween.map((e) => e.toJson()).toList(),
+      'acceptedBy': newExpense.acceptedBy,
       'createdAt': Timestamp.fromDate(now),
       'createdBy': newExpense.createdBy,
     });
@@ -30,6 +31,13 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   @override
   Future<void> deleteExpense(String expenseId) async {
     await _firestore.collection('expenses').doc(expenseId).delete();
+  }
+
+  @override
+  Future<void> acceptExpense(String expenseId, String userId) async {
+    await _firestore.collection('expenses').doc(expenseId).update({
+      'acceptedBy': FieldValue.arrayUnion([userId]),
+    });
   }
 
   @override
@@ -44,6 +52,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       return ExpenseEntity.fromJson({
         'id': doc.id,
         ...data,
+        'acceptedBy': List<String>.from(data['acceptedBy'] ?? []),
         'createdAt': (data['createdAt'] as Timestamp)
             .toDate()
             .toIso8601String(),
@@ -62,6 +71,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       'amount': expense.amount,
       'paidBy': expense.paidBy.map((e) => e.toJson()).toList(),
       'splitBetween': expense.splitBetween.map((e) => e.toJson()).toList(),
+      'acceptedBy': expense.acceptedBy,
     });
   }
 
@@ -77,6 +87,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
             return ExpenseEntity.fromJson({
               'id': doc.id,
               ...data,
+              'acceptedBy': List<String>.from(data['acceptedBy'] ?? []),
               'createdAt': (data['createdAt'] as Timestamp)
                   .toDate()
                   .toIso8601String(),

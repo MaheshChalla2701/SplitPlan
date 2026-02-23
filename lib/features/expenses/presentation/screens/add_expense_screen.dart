@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../groups/presentation/providers/group_providers.dart';
+import '../../domain/entities/expense_entity.dart';
 import '../../domain/services/ocr_service.dart';
 import '../providers/expense_providers.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
@@ -46,7 +47,12 @@ extension SplitModeX on SplitMode {
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final String groupId;
-  const AddExpenseScreen({super.key, required this.groupId});
+  final ExpenseEntity? existingExpense;
+  const AddExpenseScreen({
+    super.key,
+    required this.groupId,
+    this.existingExpense,
+  });
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -67,6 +73,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   // Text controllers for amount / percentage modes
   final Map<String, TextEditingController> _customControllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final expense = widget.existingExpense;
+    if (expense != null) {
+      _descriptionController.text = expense.description;
+      _amountController.text = expense.amount.toStringAsFixed(2);
+      _selectedMemberIds = expense.splitBetween.map((s) => s.userId).toSet();
+      for (final share in expense.splitBetween) {
+        _customControllers[share.userId] = TextEditingController(
+          text: share.amount.toStringAsFixed(2),
+        );
+        _shareValues[share.userId] = 1; // Default fallback for shares mode
+      }
+      _splitMode = SplitMode.amount; // Safest default for reconstructed splits
+    }
+  }
 
   @override
   void dispose() {
@@ -211,15 +235,29 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       if (user == null) return;
 
       final shares = _computeShares();
-      ref
-          .read(expenseControllerProvider.notifier)
-          .addExpenseWithShares(
-            groupId: widget.groupId,
-            description: _descriptionController.text.trim(),
-            amount: _totalAmount,
-            payerId: user.id,
-            splitShares: shares,
-          );
+      if (widget.existingExpense != null) {
+        ref
+            .read(expenseControllerProvider.notifier)
+            .updateExpenseWithShares(
+              expenseId: widget.existingExpense!.id,
+              groupId: widget.groupId,
+              description: _descriptionController.text.trim(),
+              amount: _totalAmount,
+              payerId: user.id, // Or keep original payer
+              splitShares: shares,
+              originalAcceptedBy: widget.existingExpense!.acceptedBy,
+            );
+      } else {
+        ref
+            .read(expenseControllerProvider.notifier)
+            .addExpenseWithShares(
+              groupId: widget.groupId,
+              description: _descriptionController.text.trim(),
+              amount: _totalAmount,
+              payerId: user.id,
+              splitShares: shares,
+            );
+      }
     }
   }
 
@@ -238,9 +276,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         },
         data: (_) {
           if (previous?.isLoading == true) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Expense added!')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  widget.existingExpense != null
+                      ? 'Expense updated!'
+                      : 'Expense added!',
+                ),
+              ),
+            );
             context.pop();
           }
         },

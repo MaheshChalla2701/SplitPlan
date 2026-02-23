@@ -12,6 +12,7 @@ class ExpenseEntity with _$ExpenseEntity {
     required double amount,
     required List<PaymentShare> paidBy,
     required List<ExpenseShare> splitBetween,
+    @Default([]) List<String> acceptedBy,
     required DateTime createdAt,
     required String createdBy,
   }) = _ExpenseEntity;

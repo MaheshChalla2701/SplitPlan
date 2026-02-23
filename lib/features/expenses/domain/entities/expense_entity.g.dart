@@ -18,6 +18,11 @@ _$ExpenseEntityImpl _$$ExpenseEntityImplFromJson(Map<String, dynamic> json) =>
       splitBetween: (json['splitBetween'] as List<dynamic>)
           .map((e) => ExpenseShare.fromJson(e as Map<String, dynamic>))
           .toList(),
+      acceptedBy:
+          (json['acceptedBy'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       createdAt: DateTime.parse(json['createdAt'] as String),
       createdBy: json['createdBy'] as String,
     );
@@ -30,6 +35,7 @@ Map<String, dynamic> _$$ExpenseEntityImplToJson(_$ExpenseEntityImpl instance) =>
       'amount': instance.amount,
       'paidBy': instance.paidBy,
       'splitBetween': instance.splitBetween,
+      'acceptedBy': instance.acceptedBy,
       'createdAt': instance.createdAt.toIso8601String(),
       'createdBy': instance.createdBy,
     };
