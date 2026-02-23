@@ -25,28 +25,41 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
     startFirestoreListener();
+    startExpensesListener();
 });
 
 // ─── Firestore Listener ────────────────────────────────────────────────────────
 function startFirestoreListener() {
     let isInitialLoad = true;
+    let initialDocs = new Set();
 
     db.collection("payment_requests")
         .orderBy("createdAt", "desc")
         .onSnapshot(
             (snapshot) => {
-                // On startup Firestore sends all existing docs as "added" — skip them.
+                // On startup Firestore sends all existing docs as "added"
                 if (isInitialLoad) {
                     isInitialLoad = false;
-                    console.log(
-                        `Listening for new payment requests (${snapshot.size} existing docs ignored)`
-                    );
+                    snapshot.docs.forEach((doc) => initialDocs.add(doc.id));
+                    console.log(`Listening for payment request updates (${snapshot.size} existing docs ignored)`);
                     return;
                 }
 
                 snapshot.docChanges().forEach((change) => {
+                    const docId = change.doc.id;
+                    const data = change.doc.data();
+
+                    // Edge case: Sometimes initial load docs get "added" again or we just want to be safe
+                    if (change.type === "added" && initialDocs.has(docId)) {
+                        return;
+                    }
+
                     if (change.type === "added") {
-                        handleNewPaymentRequest(change.doc.id, change.doc.data());
+                        handlePaymentEvent(docId, data, "CREATE");
+                    } else if (change.type === "modified") {
+                        handlePaymentEvent(docId, data, "UPDATE");
+                    } else if (change.type === "removed") {
+                        handlePaymentEvent(docId, data, "DELETE");
                     }
                 });
             },
@@ -57,38 +70,64 @@ function startFirestoreListener() {
 }
 
 // ─── Notification Logic ────────────────────────────────────────────────────────
-async function handleNewPaymentRequest(requestId, request) {
-    const { toUserId, fromUserId, amount, description } = request;
+async function handlePaymentEvent(requestId, request, eventType) {
+    const { toUserId, fromUserId, amount, description, status } = request;
 
     if (!toUserId || !fromUserId || toUserId === fromUserId) return;
 
     try {
-        // Get recipient's FCM token
-        const recipientDoc = await db.collection("users").doc(toUserId).get();
-        const fcmToken = recipientDoc.data()?.fcmToken;
+        // Send notification to the RECIPIENT for new requests
+        // For updates/deletes, notify the OTHER person (if I paid it, notify the requester)
+        const isSender = eventType === "CREATE";
+        const targetUserId = isSender ? toUserId : fromUserId;
+        const actorUserId = isSender ? fromUserId : toUserId;
+
+        // Get target user's FCM token
+        const targetDoc = await db.collection("users").doc(targetUserId).get();
+        const fcmToken = targetDoc.data()?.fcmToken;
 
         if (!fcmToken) {
-            console.log(`No FCM token for user ${toUserId}, skipping.`);
+            console.log(`No FCM token for user ${targetUserId}, skipping.`);
             return;
         }
 
-        // Get sender's name for a friendly notification
-        const senderDoc = await db.collection("users").doc(fromUserId).get();
-        const senderName = senderDoc.data()?.name ?? "Someone";
+        // Get actor's name
+        const actorDoc = await db.collection("users").doc(actorUserId).get();
+        const actorName = actorDoc.data()?.name ?? "Someone";
 
-        const desc =
-            description && description.trim().length > 0 ? description : "a payment";
-
+        const desc = description && description.trim().length > 0 ? description : "a payment";
         const formattedAmount = Number(amount).toLocaleString("en-IN", {
             maximumFractionDigits: 2,
         });
+
+        let title = "";
+        let body = "";
+
+        if (eventType === "CREATE") {
+            title = "💸 New Payment Request";
+            body = `${actorName} requested ₹${formattedAmount} for ${desc}`;
+        } else if (eventType === "UPDATE") {
+            if (status === "paid") {
+                title = "✅ Payment Received";
+                body = `${actorName} paid ₹${formattedAmount} for ${desc}`;
+            } else if (status === "declined") {
+                title = "❌ Request Declined";
+                body = `${actorName} declined your request for ₹${formattedAmount}`;
+            } else {
+                title = "📝 Request Updated";
+                body = `The request for ₹${formattedAmount} was updated`;
+            }
+        } else if (eventType === "DELETE") {
+            title = "🗑️ Request Cancelled";
+            body = `${actorName} cancelled the request for ₹${formattedAmount}`;
+        }
 
         // Send push notification via FCM
         await messaging.send({
             token: fcmToken,
             notification: {
-                title: "💸 New Payment Request",
-                body: `${senderName} requested ₹${formattedAmount} for ${desc}`,
+                title,
+                body,
             },
             android: {
                 notification: {
@@ -100,11 +139,106 @@ async function handleNewPaymentRequest(requestId, request) {
             data: {
                 requestId: requestId,
                 type: "payment_request",
+                eventType: eventType,
             },
         });
 
-        console.log(`✅ Notification sent to user ${toUserId} for request ${requestId}`);
+        console.log(`✅ [${eventType}] Notification sent to ${targetUserId} for request ${requestId}`);
     } catch (error) {
-        console.error(`❌ Error sending notification for request ${requestId}:`, error);
+        console.error(`❌ Error sending [${eventType}] notification for ${requestId}:`, error);
+    }
+}
+
+// ─── Group Expenses Listener ───────────────────────────────────────────────────
+function startExpensesListener() {
+    let isInitialLoad = true;
+    let initialDocs = new Set();
+
+    db.collection("expenses")
+        .orderBy("createdAt", "desc")
+        .onSnapshot(
+            (snapshot) => {
+                // On startup Firestore sends all existing docs as "added"
+                if (isInitialLoad) {
+                    isInitialLoad = false;
+                    snapshot.docs.forEach((doc) => initialDocs.add(doc.id));
+                    console.log(`Listening for expenses updates (${snapshot.size} existing docs ignored)`);
+                    return;
+                }
+
+                snapshot.docChanges().forEach((change) => {
+                    const docId = change.doc.id;
+                    const data = change.doc.data();
+
+                    if (change.type === "added" && initialDocs.has(docId)) {
+                        return;
+                    }
+
+                    if (change.type === "added") {
+                        handleExpenseCreateEvent(docId, data);
+                    }
+                });
+            },
+            (error) => {
+                console.error("Expenses listener error:", error);
+            }
+        );
+}
+
+async function handleExpenseCreateEvent(expenseId, expenseData) {
+    const { groupId, description, amount, createdBy } = expenseData;
+
+    try {
+        // Fetch group details to get memberIds & group name
+        const groupDoc = await db.collection("groups").doc(groupId).get();
+        if (!groupDoc.exists) return;
+
+        const groupData = groupDoc.data();
+        const memberIds = groupData.memberIds || [];
+
+        // Fetch creator details
+        const creatorDoc = await db.collection("users").doc(createdBy).get();
+        const creatorName = creatorDoc.data()?.name ?? "Someone";
+
+        const formattedAmount = Number(amount).toLocaleString("en-IN", {
+            maximumFractionDigits: 2,
+        });
+        const desc = description && description.trim().length > 0 ? description : "an expense";
+
+        const title = `🧾 New Group Expense`;
+        const body = `${creatorName} added ₹${formattedAmount} for ${desc} in ${groupData.name}`;
+
+        // Send to all members EXCEPT createdBy
+        const targetMemberIds = memberIds.filter(id => id !== createdBy);
+
+        for (const targetUserId of targetMemberIds) {
+            const targetDoc = await db.collection("users").doc(targetUserId).get();
+            const fcmToken = targetDoc.data()?.fcmToken;
+
+            if (!fcmToken) continue;
+
+            await messaging.send({
+                token: fcmToken,
+                notification: {
+                    title,
+                    body,
+                },
+                android: {
+                    notification: {
+                        channelId: "payment_requests", // Can reuse the same channel for heads-up alerts
+                        priority: "high",
+                        sound: "default",
+                    },
+                },
+                data: {
+                    expenseId: expenseId,
+                    groupId: groupId,
+                    type: "group_expense",
+                },
+            });
+            console.log(`✅ [CREATE_EXPENSE] Notification sent to ${targetUserId} for expense ${expenseId}`);
+        }
+    } catch (error) {
+        console.error(`❌ Error sending [CREATE_EXPENSE] notification for ${expenseId}:`, error);
     }
 }
