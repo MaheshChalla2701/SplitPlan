@@ -12,7 +12,7 @@ initializeApp();
  * push notification to their Android device.
  */
 exports.onPaymentRequestCreated = onDocumentCreated(
-    "paymentRequests/{requestId}",
+    "payment_requests/{requestId}",
     async (event) => {
         const request = event.data.data();
         if (!request) return;

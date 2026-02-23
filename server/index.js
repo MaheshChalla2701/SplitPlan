@@ -31,7 +31,7 @@ app.listen(PORT, () => {
 function startFirestoreListener() {
     let isInitialLoad = true;
 
-    db.collection("paymentRequests")
+    db.collection("payment_requests")
         .orderBy("createdAt", "desc")
         .onSnapshot(
             (snapshot) => {
