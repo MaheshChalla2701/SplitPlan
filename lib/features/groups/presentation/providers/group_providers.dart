@@ -17,20 +17,7 @@ GroupRepository groupRepository(Ref ref) {
 Stream<List<GroupEntity>> userGroups(Ref ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return Stream.value([]);
-
-  // Note: userGroups in repo returns Future<List>, but we might want a stream.
-  // The repo implementation has 'getUserGroups' as Future.
-  // Let's create a Stream version or just use Stream.fromFuture in a provider that invalidates.
-  // Actually, for real-time updates, we should probably add a watchUserGroups method to Repo.
-  // For now, I'll allow simple fetching.
-  // To make it reactive, I'll use FutureProvider and invalidate it on changes,
-  // or (better) implement a stream in repo.
-  // Firestore queries are easily streams.
-  // Let's stick to FutureProvider for the list for now to match interface, or wrap with Stream.
-
-  return Stream.fromFuture(
-    ref.watch(groupRepositoryProvider).getUserGroups(user.id),
-  );
+  return ref.watch(groupRepositoryProvider).watchUserGroups(user.id);
 }
 
 @riverpod

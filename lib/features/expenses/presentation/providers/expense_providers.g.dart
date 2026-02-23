@@ -166,7 +166,7 @@ class _GroupExpensesProviderElement
   String get groupId => (origin as GroupExpensesProvider).groupId;
 }
 
-String _$groupBalancesHash() => r'bd87b1388194859208d2f78b9f72e39ad0d97cf6';
+String _$groupBalancesHash() => r'e4f0c8858fdb033ce0f1f63eda9fbc1c97b63a00';
 
 /// See also [groupBalances].
 @ProviderFor(groupBalances)

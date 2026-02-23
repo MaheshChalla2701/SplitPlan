@@ -23,7 +23,7 @@ final groupRepositoryProvider = AutoDisposeProvider<GroupRepository>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef GroupRepositoryRef = AutoDisposeProviderRef<GroupRepository>;
-String _$userGroupsHash() => r'd7457ccd6e32739acaac5da0259adeeba97804c4';
+String _$userGroupsHash() => r'49ff76728af4aced5f8dbf577e083671042d8b7a';
 
 /// See also [userGroups].
 @ProviderFor(userGroups)

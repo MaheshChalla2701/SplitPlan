@@ -5,6 +5,7 @@ abstract class GroupRepository {
   Future<void> updateGroup(GroupEntity group);
   Future<void> deleteGroup(String groupId);
   Future<List<GroupEntity>> getUserGroups(String userId);
+  Stream<List<GroupEntity>> watchUserGroups(String userId);
   Stream<GroupEntity> watchGroup(String groupId);
   Future<void> addMember(String groupId, String userId);
   Future<void> removeMember(String groupId, String userId);

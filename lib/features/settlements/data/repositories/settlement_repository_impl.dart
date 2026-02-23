@@ -12,10 +12,9 @@ class SettlementRepositoryImpl implements SettlementRepository {
     final snapshot = await _firestore
         .collection('settlements')
         .where('groupId', isEqualTo: groupId)
-        .orderBy('settledAt', descending: true)
         .get();
 
-    return snapshot.docs.map((doc) {
+    final settlements = snapshot.docs.map((doc) {
       final data = doc.data();
       return SettlementEntity.fromJson({
         'id': doc.id,
@@ -25,6 +24,10 @@ class SettlementRepositoryImpl implements SettlementRepository {
             .toIso8601String(),
       });
     }).toList();
+
+    // Sort in Dart to avoid needing a composite Firestore index
+    settlements.sort((a, b) => b.settledAt.compareTo(a.settledAt));
+    return settlements;
   }
 
   @override
@@ -51,10 +54,9 @@ class SettlementRepositoryImpl implements SettlementRepository {
     return _firestore
         .collection('settlements')
         .where('groupId', isEqualTo: groupId)
-        .orderBy('settledAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.map((doc) {
+          final settlements = snapshot.docs.map((doc) {
             final data = doc.data();
             return SettlementEntity.fromJson({
               'id': doc.id,
@@ -64,6 +66,9 @@ class SettlementRepositoryImpl implements SettlementRepository {
                   .toIso8601String(),
             });
           }).toList();
+          // Sort in Dart to avoid needing a composite Firestore index
+          settlements.sort((a, b) => b.settledAt.compareTo(a.settledAt));
+          return settlements;
         });
   }
 }

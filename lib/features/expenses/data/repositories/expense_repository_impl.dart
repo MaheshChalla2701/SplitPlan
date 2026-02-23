@@ -37,10 +37,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     final snapshot = await _firestore
         .collection('expenses')
         .where('groupId', isEqualTo: groupId)
-        .orderBy('createdAt', descending: true)
         .get();
 
-    return snapshot.docs.map((doc) {
+    final expenses = snapshot.docs.map((doc) {
       final data = doc.data();
       return ExpenseEntity.fromJson({
         'id': doc.id,
@@ -50,6 +49,10 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
             .toIso8601String(),
       });
     }).toList();
+
+    // Sort in Dart to avoid needing a composite Firestore index
+    expenses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return expenses;
   }
 
   @override
@@ -67,10 +70,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     return _firestore
         .collection('expenses')
         .where('groupId', isEqualTo: groupId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.map((doc) {
+          final expenses = snapshot.docs.map((doc) {
             final data = doc.data();
             return ExpenseEntity.fromJson({
               'id': doc.id,
@@ -80,6 +82,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
                   .toIso8601String(),
             });
           }).toList();
+          // Sort in Dart to avoid needing a composite Firestore index
+          expenses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return expenses;
         });
   }
 }

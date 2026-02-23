@@ -47,10 +47,9 @@ class GroupRepositoryImpl implements GroupRepository {
     final snapshot = await _firestore
         .collection('groups')
         .where('memberIds', arrayContains: userId)
-        .orderBy('createdAt', descending: true)
         .get();
 
-    return snapshot.docs.map((doc) {
+    final groups = snapshot.docs.map((doc) {
       final data = doc.data();
       return GroupEntity.fromJson({
         'id': doc.id,
@@ -60,6 +59,32 @@ class GroupRepositoryImpl implements GroupRepository {
             .toIso8601String(),
       });
     }).toList();
+
+    groups.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return groups;
+  }
+
+  @override
+  Stream<List<GroupEntity>> watchUserGroups(String userId) {
+    return _firestore
+        .collection('groups')
+        .where('memberIds', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) {
+          final groups = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return GroupEntity.fromJson({
+              'id': doc.id,
+              ...data,
+              'createdAt': (data['createdAt'] as Timestamp)
+                  .toDate()
+                  .toIso8601String(),
+            });
+          }).toList();
+          // Sort in Dart to avoid needing a composite Firestore index
+          groups.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return groups;
+        });
   }
 
   @override

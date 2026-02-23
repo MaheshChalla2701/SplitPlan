@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../expenses/presentation/providers/expense_providers.dart';
+import '../../../friends/presentation/providers/friends_providers.dart';
 import '../providers/group_providers.dart';
 
 class GroupDetailsScreen extends ConsumerWidget {
@@ -15,9 +17,11 @@ class GroupDetailsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupProvider(groupId));
     final expensesAsync = ref.watch(groupExpensesProvider(groupId));
+    final currentUserId = ref.watch(authStateProvider).value?.id;
 
     return Scaffold(
       appBar: AppBar(
+        leading: BackButton(onPressed: () => context.pop()),
         title: groupAsync.when(
           data: (group) => Text(group.name),
           loading: () => const Text(AppConstants.loading),
@@ -43,7 +47,7 @@ class GroupDetailsScreen extends ConsumerWidget {
             Expanded(
               child: TabBarView(
                 children: [
-                  // Expenses Tab
+                  // ─── Expenses Tab ─────────────────────────────────────
                   expensesAsync.when(
                     data: (expenses) {
                       if (expenses.isEmpty) {
@@ -54,20 +58,44 @@ class GroupDetailsScreen extends ConsumerWidget {
                         itemCount: expenses.length,
                         itemBuilder: (context, index) {
                           final expense = expenses[index];
+                          final payerId = expense.paidBy.isNotEmpty
+                              ? expense.paidBy.first.userId
+                              : null;
+
                           return Card(
-                            child: ListTile(
-                              leading: const CircleAvatar(
-                                child: Icon(Icons.receipt),
-                              ),
-                              title: Text(expense.description),
-                              subtitle: Text('Paid by you'),
-                              trailing: Text(
-                                '₹${expense.amount.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
+                            child: Consumer(
+                              builder: (context, ref, _) {
+                                final payerAsync = payerId != null
+                                    ? ref.watch(specificFriendProvider(payerId))
+                                    : null;
+
+                                final payerLabel = payerId == null
+                                    ? 'Unknown payer'
+                                    : payerId == currentUserId
+                                    ? 'Paid by you'
+                                    : payerAsync?.when(
+                                            data: (user) =>
+                                                'Paid by ${user?.name ?? payerId}',
+                                            loading: () => 'Loading...',
+                                            error: (_, _) => 'Paid by $payerId',
+                                          ) ??
+                                          'Paid by $payerId';
+
+                                return ListTile(
+                                  leading: const CircleAvatar(
+                                    child: Icon(Icons.receipt),
+                                  ),
+                                  title: Text(expense.description),
+                                  subtitle: Text(payerLabel),
+                                  trailing: Text(
+                                    '₹${expense.amount.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           );
                         },
@@ -78,7 +106,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                     error: (err, stack) => Center(child: Text('Error: $err')),
                   ),
 
-                  // Balances Tab
+                  // ─── Balances Tab ─────────────────────────────────────
                   Consumer(
                     builder: (context, ref, child) {
                       final balancesAsync = ref.watch(
@@ -93,8 +121,16 @@ class GroupDetailsScreen extends ConsumerWidget {
                             );
                           }
 
-                          // Convert map to list for display
-                          final balanceEntries = balances.entries.toList();
+                          // Filter out zero balances
+                          final balanceEntries = balances.entries
+                              .where((e) => e.value.abs() > 0.01)
+                              .toList();
+
+                          if (balanceEntries.isEmpty) {
+                            return const Center(
+                              child: Text('All settled up! 🎉'),
+                            );
+                          }
 
                           return ListView.builder(
                             padding: const EdgeInsets.all(16),
@@ -107,49 +143,78 @@ class GroupDetailsScreen extends ConsumerWidget {
                                   ? Colors.green
                                   : Colors.red;
 
-                              return ListTile(
-                                title: Text(
-                                  'User ${entry.key}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      '₹${amount.abs().toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        color: color,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                              return Consumer(
+                                builder: (context, ref, _) {
+                                  final userAsync = ref.watch(
+                                    specificFriendProvider(entry.key),
+                                  );
+
+                                  final displayName = userAsync.when(
+                                    data: (user) => user?.name ?? entry.key,
+                                    loading: () => '...',
+                                    error: (_, _) => entry.key,
+                                  );
+
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: color.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      child: Text(
+                                        displayName.isNotEmpty
+                                            ? displayName[0].toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          color: color,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
-                                    if (!isPositive) ...[
-                                      const SizedBox(width: 8),
-                                      FilledButton.tonal(
-                                        onPressed: () {
-                                          context.push(
-                                            Uri(
-                                              path: '/groups/$groupId/settle',
-                                              queryParameters: {
-                                                'toUserId': entry.key,
-                                                'amount': amount
-                                                    .abs()
-                                                    .toString(),
-                                              },
-                                            ).toString(),
-                                          );
-                                        },
-                                        child: const Text('Settle'),
+                                    title: Text(
+                                      displayName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    ],
-                                  ],
-                                ),
-                                subtitle: Text(
-                                  isPositive ? 'Gets back' : 'Owes',
-                                  style: TextStyle(color: color),
-                                ),
+                                    ),
+                                    subtitle: Text(
+                                      isPositive ? 'Gets back' : 'Owes',
+                                      style: TextStyle(color: color),
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '₹${amount.abs().toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            color: color,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        if (!isPositive) ...[
+                                          const SizedBox(width: 8),
+                                          FilledButton.tonal(
+                                            onPressed: () {
+                                              context.push(
+                                                Uri(
+                                                  path:
+                                                      '/groups/$groupId/settle',
+                                                  queryParameters: {
+                                                    'toUserId': entry.key,
+                                                    'amount': amount
+                                                        .abs()
+                                                        .toString(),
+                                                  },
+                                                ).toString(),
+                                              );
+                                            },
+                                            child: const Text('Settle'),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                },
                               );
                             },
                           );
@@ -161,18 +226,97 @@ class GroupDetailsScreen extends ConsumerWidget {
                       );
                     },
                   ),
-
-                  // Members Tab
+                  // ─── Members Tab ──────────────────────────────────────
                   groupAsync.when(
                     data: (group) => ListView.builder(
                       padding: const EdgeInsets.all(16),
                       itemCount: group.memberIds.length,
                       itemBuilder: (context, index) {
-                        return ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.person),
-                          ),
-                          title: Text('Member ID: ${group.memberIds[index]}'),
+                        final memberId = group.memberIds[index];
+                        final isCurrentUser = memberId == currentUserId;
+
+                        return Consumer(
+                          builder: (context, ref, _) {
+                            final memberAsync = ref.watch(
+                              specificFriendProvider(memberId),
+                            );
+
+                            return memberAsync.when(
+                              data: (member) {
+                                final name =
+                                    member?.name ??
+                                    (isCurrentUser ? 'You' : memberId);
+                                final username = member?.isManual == true
+                                    ? null
+                                    : member?.username;
+                                final initial = name.isNotEmpty
+                                    ? name[0].toUpperCase()
+                                    : '?';
+
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer,
+                                    child: Text(
+                                      initial,
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimaryContainer,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    isCurrentUser ? '$name (You)' : name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: username != null
+                                      ? Text('@$username')
+                                      : null,
+                                  trailing: group.adminId == memberId
+                                      ? Chip(
+                                          label: const Text('Admin'),
+                                          padding: EdgeInsets.zero,
+                                          labelStyle: TextStyle(
+                                            fontSize: 11,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                          side: BorderSide(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                          backgroundColor: Theme.of(
+                                            context,
+                                          ).colorScheme.primaryContainer,
+                                        )
+                                      : null,
+                                );
+                              },
+                              loading: () => const ListTile(
+                                leading: CircleAvatar(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                title: Text('Loading...'),
+                              ),
+                              error: (_, _) => ListTile(
+                                leading: const CircleAvatar(
+                                  child: Icon(Icons.person),
+                                ),
+                                title: Text(
+                                  isCurrentUser ? 'You' : 'Unknown member',
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -187,7 +331,7 @@ class GroupDetailsScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          context.go('/groups/$groupId/add-expense');
+          context.push('/groups/$groupId/add-expense');
         },
         child: const Icon(Icons.add),
       ),
