@@ -10,4 +10,5 @@ abstract class GroupRepository {
   Future<void> addMember(String groupId, String userId);
   Future<void> removeMember(String groupId, String userId);
   Future<GroupEntity> getGroup(String groupId);
+  Future<void> makeAdmin(String groupId, String userId);
 }

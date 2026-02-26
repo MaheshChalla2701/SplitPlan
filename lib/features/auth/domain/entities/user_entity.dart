@@ -15,8 +15,10 @@ class UserEntity with _$UserEntity {
     String? upiId,
     @Default(true) bool isSearchable,
     @Default(false) bool isManual,
+    @Default(true) bool notificationsEnabled,
     String? ownerId,
     @Default([]) List<String> friends,
+    @Default([]) List<String> mutedUids,
     required DateTime createdAt,
     DateTime? updatedAt,
   }) = _UserEntity;

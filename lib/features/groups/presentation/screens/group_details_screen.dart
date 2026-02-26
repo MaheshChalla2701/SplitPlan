@@ -6,6 +6,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../expenses/presentation/providers/expense_providers.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
+import '../../domain/entities/group_entity.dart';
 import '../providers/group_providers.dart';
 
 class GroupDetailsScreen extends ConsumerWidget {
@@ -22,17 +23,38 @@ class GroupDetailsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.pop()),
-        title: groupAsync.when(
-          data: (group) => Text(group.name),
-          loading: () => const Text(AppConstants.loading),
-          error: (_, _) => const Text(AppConstants.error),
+        title: Builder(
+          builder: (context) => InkWell(
+            onTap: () {
+              Scaffold.of(context).openEndDrawer();
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4.0,
+                vertical: 2.0,
+              ),
+              child: groupAsync.when(
+                data: (group) => Text(group.name),
+                loading: () => const Text(AppConstants.loading),
+                error: (_, _) => const Text(AppConstants.error),
+              ),
+            ),
+          ),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'Menu',
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
+          ),
         ],
       ),
+      endDrawer: _buildGroupDrawer(context, ref, currentUserId),
       body: DefaultTabController(
-        length: 3,
+        length: 2,
         child: Column(
           children: [
             TabBar(
@@ -41,7 +63,6 @@ class GroupDetailsScreen extends ConsumerWidget {
               tabs: const [
                 Tab(text: AppConstants.expenses),
                 Tab(text: AppConstants.balances),
-                Tab(text: AppConstants.members),
               ],
             ),
             Expanded(
@@ -568,103 +589,6 @@ class GroupDetailsScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  // ─── Members Tab ──────────────────────────────────────
-                  groupAsync.when(
-                    data: (group) => ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: group.memberIds.length,
-                      itemBuilder: (context, index) {
-                        final memberId = group.memberIds[index];
-                        final isCurrentUser = memberId == currentUserId;
-
-                        return Consumer(
-                          builder: (context, ref, _) {
-                            final memberAsync = ref.watch(
-                              specificFriendProvider(memberId),
-                            );
-
-                            return memberAsync.when(
-                              data: (member) {
-                                final name =
-                                    member?.name ??
-                                    (isCurrentUser ? 'You' : memberId);
-                                final username = member?.isManual == true
-                                    ? null
-                                    : member?.username;
-                                final initial = name.isNotEmpty
-                                    ? name[0].toUpperCase()
-                                    : '?';
-
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.primaryContainer,
-                                    child: Text(
-                                      initial,
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onPrimaryContainer,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  title: Text(
-                                    isCurrentUser ? '$name (You)' : name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  subtitle: username != null
-                                      ? Text('@$username')
-                                      : null,
-                                  trailing: group.adminId == memberId
-                                      ? Chip(
-                                          label: const Text('Admin'),
-                                          padding: EdgeInsets.zero,
-                                          labelStyle: TextStyle(
-                                            fontSize: 11,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                          ),
-                                          side: BorderSide(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                          ),
-                                          backgroundColor: Theme.of(
-                                            context,
-                                          ).colorScheme.primaryContainer,
-                                        )
-                                      : null,
-                                );
-                              },
-                              loading: () => const ListTile(
-                                leading: CircleAvatar(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                                title: Text('Loading...'),
-                              ),
-                              error: (_, _) => ListTile(
-                                leading: const CircleAvatar(
-                                  child: Icon(Icons.person),
-                                ),
-                                title: Text(
-                                  isCurrentUser ? 'You' : 'Unknown member',
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    loading: () => const SizedBox(),
-                    error: (_, _) => const SizedBox(),
-                  ),
                 ],
               ),
             ),
@@ -676,6 +600,228 @@ class GroupDetailsScreen extends ConsumerWidget {
           context.push('/groups/$groupId/add-expense');
         },
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildGroupDrawer(
+    BuildContext context,
+    WidgetRef ref,
+    String? currentUserId,
+  ) {
+    final groupAsync = ref.watch(groupProvider(groupId));
+    final currentUser = ref.watch(authStateProvider).value;
+
+    return Drawer(
+      child: groupAsync.when(
+        data: (group) {
+          final isMuted = currentUser?.mutedUids.contains(group.id) ?? false;
+
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              UserAccountsDrawerHeader(
+                accountName: Text(group.name),
+                accountEmail: Text('${group.memberIds.length} members'),
+                currentAccountPicture: CircleAvatar(
+                  radius: 40,
+                  child: Text(
+                    group.name.isNotEmpty ? group.name[0].toUpperCase() : '?',
+                    style: const TextStyle(fontSize: 32),
+                  ),
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              if (currentUser != null)
+                SwitchListTile(
+                  title: const Text('Mute Notifications'),
+                  subtitle: const Text(
+                    'Mute all expenses and activity from this group',
+                  ),
+                  secondary: const Icon(Icons.notifications_off_outlined),
+                  value: isMuted,
+                  activeThumbColor: Theme.of(context).primaryColor,
+                  onChanged: (value) async {
+                    try {
+                      final updatedMutedUids = List<String>.from(
+                        currentUser.mutedUids,
+                      );
+                      if (value) {
+                        if (!updatedMutedUids.contains(group.id)) {
+                          updatedMutedUids.add(group.id);
+                        }
+                      } else {
+                        updatedMutedUids.remove(group.id);
+                      }
+
+                      await ref
+                          .read(firebaseFirestoreProvider)
+                          .collection('users')
+                          .doc(currentUser.id)
+                          .update({'mutedUids': updatedMutedUids});
+
+                      // ignore: unused_result
+                      ref.refresh(authStateProvider);
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error updating setting: $e')),
+                      );
+                    }
+                  },
+                ),
+              const Divider(),
+              Padding(
+                padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                child: Text(
+                  'Members',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+              ...group.memberIds.map((memberId) {
+                final isCurrentUser = memberId == currentUserId;
+                final isCurrentUserAdmin =
+                    currentUser != null &&
+                    group.adminIds.contains(currentUser.id);
+                final isMemberAdmin = group.adminIds.contains(memberId);
+
+                return Consumer(
+                  builder: (context, ref, _) {
+                    final memberAsync = ref.watch(
+                      specificFriendProvider(memberId),
+                    );
+
+                    return memberAsync.when(
+                      data: (member) {
+                        final name =
+                            member?.name ?? (isCurrentUser ? 'You' : memberId);
+                        final username = member?.isManual == true
+                            ? null
+                            : member?.username;
+                        final initial = name.isNotEmpty
+                            ? name[0].toUpperCase()
+                            : '?';
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
+                            child: Text(
+                              initial,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            isCurrentUser ? '$name (You)' : name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: username != null
+                              ? Text('@$username')
+                              : null,
+                          trailing: isMemberAdmin
+                              ? Chip(
+                                  label: const Text('Admin'),
+                                  padding: EdgeInsets.zero,
+                                  labelStyle: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  side: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
+                                )
+                              : null,
+                          onTap: () {
+                            if (isCurrentUserAdmin &&
+                                !isCurrentUser &&
+                                !isMemberAdmin &&
+                                member != null) {
+                              _showMakeAdminDialog(
+                                context,
+                                ref,
+                                member.id,
+                                name,
+                              );
+                            } else if (!isCurrentUser && member != null) {
+                              Navigator.pop(context); // Close drawer
+                              context.push('/friends/${member.id}');
+                            }
+                          },
+                        );
+                      },
+                      loading: () => const ListTile(
+                        leading: CircleAvatar(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        title: Text('Loading...'),
+                      ),
+                      error: (_, _) => ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.person)),
+                        title: Text(isCurrentUser ? 'You' : 'Unknown member'),
+                      ),
+                    );
+                  },
+                );
+              }),
+              if (currentUser != null &&
+                  group.adminIds.contains(currentUser.id))
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.transparent,
+                    child: Icon(Icons.person_add, color: Colors.blue),
+                  ),
+                  title: const Text(
+                    'Add Member',
+                    style: TextStyle(color: Colors.blue),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAddMemberSheet(context, ref, group);
+                  },
+                ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app, color: Colors.red),
+                title: const Text(
+                  'Leave Group',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  // Existing logic or placeholder for leave group logic
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Leave group functionality not fully implemented',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
       ),
     );
   }
@@ -985,6 +1131,150 @@ class GroupDetailsScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMakeAdminDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String memberId,
+    String memberName,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Make Admin'),
+        content: Text(
+          'Are you sure you want to make $memberName an admin of this group?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              ref
+                  .read(groupControllerProvider.notifier)
+                  .makeAdmin(groupId, memberId);
+              Navigator.pop(context);
+            },
+            child: const Text('Make Admin'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddMemberSheet(
+    BuildContext context,
+    WidgetRef ref,
+    GroupEntity group,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final friendsAsync = ref.watch(userFriendsProvider);
+
+            return SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Add Members',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Divider(),
+                  Expanded(
+                    child: friendsAsync.when(
+                      data: (friends) {
+                        final availableFriends = friends
+                            .where((f) => !group.memberIds.contains(f.id))
+                            .toList();
+
+                        if (availableFriends.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'All your friends are already in this group!',
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          controller: scrollController,
+                          itemCount: availableFriends.length,
+                          itemBuilder: (context, index) {
+                            final friend = availableFriends[index];
+                            final initial = friend.name.isNotEmpty
+                                ? friend.name[0].toUpperCase()
+                                : '?';
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
+                                child: Text(
+                                  initial,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                friend.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: friend.isManual
+                                  ? null
+                                  : Text('@${friend.username}'),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.add_circle_outline),
+                                color: Theme.of(context).colorScheme.primary,
+                                onPressed: () {
+                                  ref
+                                      .read(groupControllerProvider.notifier)
+                                      .addMember(groupId, friend.id);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (_, _) =>
+                          const Center(child: Text('Failed to load friends.')),
+                    ),
+                  ),
                 ],
               ),
             );

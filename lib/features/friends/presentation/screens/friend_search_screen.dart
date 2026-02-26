@@ -14,6 +14,7 @@ class FriendSearchScreen extends ConsumerStatefulWidget {
 class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
   final _searchController = TextEditingController();
   bool _searchByPhone = false;
+  final Set<String> _sentRequests = {};
 
   @override
   void dispose() {
@@ -213,6 +214,9 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
                               final status = snapshot.data;
                               final hasPendingRequest = status == 'pending';
                               final isAccepted = status == 'accepted';
+                              final isSentLocal = _sentRequests.contains(
+                                user.id,
+                              );
 
                               return ListTile(
                                 leading: CircleAvatar(
@@ -239,9 +243,9 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
                                         label: Text('Friends'),
                                         backgroundColor: AppTheme.primaryColor,
                                       )
-                                    : hasPendingRequest
+                                    : (hasPendingRequest || isSentLocal)
                                     ? const Chip(
-                                        label: Text('Pending'),
+                                        label: Text('Requested'),
                                         backgroundColor: Colors.orange,
                                       )
                                     : ElevatedButton.icon(
@@ -252,6 +256,9 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
                                                     .notifier,
                                               )
                                               .sendRequest(user.id);
+                                          setState(() {
+                                            _sentRequests.add(user.id);
+                                          });
                                         },
                                         icon: const Icon(
                                           Icons.person_add,

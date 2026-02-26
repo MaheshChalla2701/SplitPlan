@@ -10,6 +10,8 @@ import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/entities/friendship_entity.dart';
 import '../../presentation/providers/friends_providers.dart';
 import '../../../settlements/domain/services/nudge_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../groups/presentation/providers/group_providers.dart';
 
 class FriendDetailScreen extends ConsumerWidget {
   final String friendId;
@@ -94,20 +96,35 @@ class FriendDetailScreen extends ConsumerWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(friend.name),
-                Text(
-                  friend.isManual
-                      ? '#${friend.name.toLowerCase().replaceAll(' ', '_')}'
-                      : '@${friend.username}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.normal,
+            title: Builder(
+              builder: (context) => InkWell(
+                onTap: () {
+                  Scaffold.of(context).openEndDrawer();
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4.0,
+                    vertical: 2.0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(friend.name),
+                      Text(
+                        friend.isManual
+                            ? '#${friend.name.toLowerCase().replaceAll(' ', '_')}'
+                            : '@${friend.username}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
             actions: [
               if (friend.isManual)
@@ -1322,6 +1339,10 @@ class FriendDetailScreen extends ConsumerWidget {
     UserEntity friend,
     FriendshipEntity? friendshipDetails,
   ) {
+    final currentUser = ref.watch(authStateProvider).value;
+    final groupsAsync = ref.watch(userGroupsProvider);
+    final isMuted = currentUser?.mutedUids.contains(friend.id) ?? false;
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -1347,6 +1368,70 @@ class FriendDetailScreen extends ConsumerWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
+          if (friend.phoneNumber != null)
+            ListTile(
+              leading: const Icon(Icons.phone_outlined),
+              title: const Text('Phone Number'),
+              subtitle: Text(friend.phoneNumber!),
+              onTap: () {
+                // Future enhancement: copy to clipboard or launch dialer
+                Clipboard.setData(ClipboardData(text: friend.phoneNumber!));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Phone number copied to clipboard'),
+                  ),
+                );
+              },
+            ),
+          if (friend.upiId != null)
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_outlined),
+              title: const Text('UPI ID'),
+              subtitle: Text(friend.upiId!),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: friend.upiId!));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('UPI ID copied to clipboard')),
+                );
+              },
+            ),
+          if (friend.phoneNumber != null || friend.upiId != null)
+            const Divider(),
+          if (currentUser != null && !friend.isManual)
+            SwitchListTile(
+              title: const Text('Mute Notifications'),
+              subtitle: const Text('For direct payments and common groups'),
+              secondary: const Icon(Icons.notifications_off_outlined),
+              value: isMuted,
+              activeThumbColor: Theme.of(context).primaryColor,
+              onChanged: (value) async {
+                try {
+                  final updatedMutedUids = List<String>.from(
+                    currentUser.mutedUids,
+                  );
+                  if (value) {
+                    if (!updatedMutedUids.contains(friend.id)) {
+                      updatedMutedUids.add(friend.id);
+                    }
+                  } else {
+                    updatedMutedUids.remove(friend.id);
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(currentUser.id)
+                      .update({'mutedUids': updatedMutedUids});
+
+                  // ignore: unused_result
+                  ref.refresh(authStateProvider);
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error updating setting: $e')),
+                  );
+                }
+              },
+            ),
           SwitchListTile(
             title: const Text('Auto Accept Requests'),
             subtitle: const Text(
@@ -1366,6 +1451,71 @@ class FriendDetailScreen extends ConsumerWidget {
             ),
           ),
           const Divider(),
+          if (!friend.isManual)
+            groupsAsync.when(
+              data: (allGroups) {
+                final commonGroups = allGroups.where((group) {
+                  return group.memberIds.contains(friend.id);
+                }).toList();
+
+                if (commonGroups.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Text(
+                        'Common Groups (${commonGroups.length})',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ),
+                    ...commonGroups.map(
+                      (group) => ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
+                          child: Icon(
+                            Icons.groups,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(group.name),
+                        subtitle: Text('${group.memberIds.length} members'),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                        onTap: () {
+                          Navigator.pop(context); // Close drawer
+                          context.push('/groups/${group.id}');
+                        },
+                      ),
+                    ),
+                    const Divider(),
+                  ],
+                );
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, stack) => Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('Error loading common groups: $err'),
+              ),
+            ),
           ListTile(
             leading: const Icon(
               Icons.cleaning_services_outlined,

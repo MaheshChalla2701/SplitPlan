@@ -8,7 +8,7 @@ class GroupEntity with _$GroupEntity {
   const factory GroupEntity({
     required String id,
     required String name,
-    required String adminId,
+    required List<String> adminIds,
     required List<String> memberIds,
     required DateTime createdAt,
     Map<String, dynamic>? metadata, // For future planning features

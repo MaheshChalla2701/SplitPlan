@@ -15,12 +15,12 @@ class GroupRepositoryImpl implements GroupRepository {
     // Assuming the first member is the admin if not specified logic is handled in UseCase
     // Ideally, the UseCase or caller provides the adminId.
     // For now, I'll assume the first member is the creator/admin.
-    final adminId = memberIds.isNotEmpty ? memberIds.first : '';
+    final adminIds = memberIds.isNotEmpty ? [memberIds.first] : <String>[];
 
     final group = GroupEntity(
       id: docRef.id,
       name: name,
-      adminId: adminId,
+      adminIds: adminIds,
       memberIds: memberIds,
       createdAt: now,
       metadata: {},
@@ -28,7 +28,7 @@ class GroupRepositoryImpl implements GroupRepository {
 
     await docRef.set({
       'name': name,
-      'adminId': adminId,
+      'adminIds': adminIds,
       'memberIds': memberIds,
       'createdAt': Timestamp.fromDate(now),
       'metadata': {},
@@ -91,7 +91,7 @@ class GroupRepositoryImpl implements GroupRepository {
   Future<void> updateGroup(GroupEntity group) async {
     await _firestore.collection('groups').doc(group.id).update({
       'name': group.name,
-      'adminId': group.adminId,
+      'adminIds': group.adminIds,
       'memberIds': group.memberIds,
       'metadata': group.metadata,
     });
@@ -139,6 +139,13 @@ class GroupRepositoryImpl implements GroupRepository {
       'id': doc.id,
       ...data,
       'createdAt': (data['createdAt'] as Timestamp).toDate().toIso8601String(),
+    });
+  }
+
+  @override
+  Future<void> makeAdmin(String groupId, String userId) async {
+    await _firestore.collection('groups').doc(groupId).update({
+      'adminIds': FieldValue.arrayUnion([userId]),
     });
   }
 }

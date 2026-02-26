@@ -23,7 +23,7 @@ GroupEntity _$GroupEntityFromJson(Map<String, dynamic> json) {
 mixin _$GroupEntity {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
-  String get adminId => throw _privateConstructorUsedError;
+  List<String> get adminIds => throw _privateConstructorUsedError;
   List<String> get memberIds => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   Map<String, dynamic>? get metadata => throw _privateConstructorUsedError;
@@ -48,7 +48,7 @@ abstract class $GroupEntityCopyWith<$Res> {
   $Res call({
     String id,
     String name,
-    String adminId,
+    List<String> adminIds,
     List<String> memberIds,
     DateTime createdAt,
     Map<String, dynamic>? metadata,
@@ -72,7 +72,7 @@ class _$GroupEntityCopyWithImpl<$Res, $Val extends GroupEntity>
   $Res call({
     Object? id = null,
     Object? name = null,
-    Object? adminId = null,
+    Object? adminIds = null,
     Object? memberIds = null,
     Object? createdAt = null,
     Object? metadata = freezed,
@@ -87,10 +87,10 @@ class _$GroupEntityCopyWithImpl<$Res, $Val extends GroupEntity>
                 ? _value.name
                 : name // ignore: cast_nullable_to_non_nullable
                       as String,
-            adminId: null == adminId
-                ? _value.adminId
-                : adminId // ignore: cast_nullable_to_non_nullable
-                      as String,
+            adminIds: null == adminIds
+                ? _value.adminIds
+                : adminIds // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             memberIds: null == memberIds
                 ? _value.memberIds
                 : memberIds // ignore: cast_nullable_to_non_nullable
@@ -121,7 +121,7 @@ abstract class _$$GroupEntityImplCopyWith<$Res>
   $Res call({
     String id,
     String name,
-    String adminId,
+    List<String> adminIds,
     List<String> memberIds,
     DateTime createdAt,
     Map<String, dynamic>? metadata,
@@ -144,7 +144,7 @@ class __$$GroupEntityImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? name = null,
-    Object? adminId = null,
+    Object? adminIds = null,
     Object? memberIds = null,
     Object? createdAt = null,
     Object? metadata = freezed,
@@ -159,10 +159,10 @@ class __$$GroupEntityImplCopyWithImpl<$Res>
             ? _value.name
             : name // ignore: cast_nullable_to_non_nullable
                   as String,
-        adminId: null == adminId
-            ? _value.adminId
-            : adminId // ignore: cast_nullable_to_non_nullable
-                  as String,
+        adminIds: null == adminIds
+            ? _value._adminIds
+            : adminIds // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         memberIds: null == memberIds
             ? _value._memberIds
             : memberIds // ignore: cast_nullable_to_non_nullable
@@ -186,11 +186,12 @@ class _$GroupEntityImpl implements _GroupEntity {
   const _$GroupEntityImpl({
     required this.id,
     required this.name,
-    required this.adminId,
+    required final List<String> adminIds,
     required final List<String> memberIds,
     required this.createdAt,
     final Map<String, dynamic>? metadata,
-  }) : _memberIds = memberIds,
+  }) : _adminIds = adminIds,
+       _memberIds = memberIds,
        _metadata = metadata;
 
   factory _$GroupEntityImpl.fromJson(Map<String, dynamic> json) =>
@@ -200,8 +201,14 @@ class _$GroupEntityImpl implements _GroupEntity {
   final String id;
   @override
   final String name;
+  final List<String> _adminIds;
   @override
-  final String adminId;
+  List<String> get adminIds {
+    if (_adminIds is EqualUnmodifiableListView) return _adminIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_adminIds);
+  }
+
   final List<String> _memberIds;
   @override
   List<String> get memberIds {
@@ -224,7 +231,7 @@ class _$GroupEntityImpl implements _GroupEntity {
 
   @override
   String toString() {
-    return 'GroupEntity(id: $id, name: $name, adminId: $adminId, memberIds: $memberIds, createdAt: $createdAt, metadata: $metadata)';
+    return 'GroupEntity(id: $id, name: $name, adminIds: $adminIds, memberIds: $memberIds, createdAt: $createdAt, metadata: $metadata)';
   }
 
   @override
@@ -234,7 +241,7 @@ class _$GroupEntityImpl implements _GroupEntity {
             other is _$GroupEntityImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.adminId, adminId) || other.adminId == adminId) &&
+            const DeepCollectionEquality().equals(other._adminIds, _adminIds) &&
             const DeepCollectionEquality().equals(
               other._memberIds,
               _memberIds,
@@ -250,7 +257,7 @@ class _$GroupEntityImpl implements _GroupEntity {
     runtimeType,
     id,
     name,
-    adminId,
+    const DeepCollectionEquality().hash(_adminIds),
     const DeepCollectionEquality().hash(_memberIds),
     createdAt,
     const DeepCollectionEquality().hash(_metadata),
@@ -274,7 +281,7 @@ abstract class _GroupEntity implements GroupEntity {
   const factory _GroupEntity({
     required final String id,
     required final String name,
-    required final String adminId,
+    required final List<String> adminIds,
     required final List<String> memberIds,
     required final DateTime createdAt,
     final Map<String, dynamic>? metadata,
@@ -288,7 +295,7 @@ abstract class _GroupEntity implements GroupEntity {
   @override
   String get name;
   @override
-  String get adminId;
+  List<String> get adminIds;
   @override
   List<String> get memberIds;
   @override

@@ -82,12 +82,25 @@ async function handlePaymentEvent(requestId, request, eventType) {
         const targetUserId = isSender ? toUserId : fromUserId;
         const actorUserId = isSender ? fromUserId : toUserId;
 
-        // Get target user's FCM token
+        // Get target user's FCM token and notification preferences
         const targetDoc = await db.collection("users").doc(targetUserId).get();
-        const fcmToken = targetDoc.data()?.fcmToken;
+        const targetData = targetDoc.data();
+        const fcmToken = targetData?.fcmToken;
+        const notificationsEnabled = targetData?.notificationsEnabled ?? true;
+        const mutedUids = targetData?.mutedUids || [];
 
         if (!fcmToken) {
             console.log(`No FCM token for user ${targetUserId}, skipping.`);
+            return;
+        }
+
+        if (notificationsEnabled === false) {
+            console.log(`Notifications disabled by user ${targetUserId}, skipping.`);
+            return;
+        }
+
+        if (mutedUids.includes(actorUserId)) {
+            console.log(`Notifications from ${actorUserId} muted by user ${targetUserId}, skipping.`);
             return;
         }
 
@@ -213,9 +226,22 @@ async function handleExpenseCreateEvent(expenseId, expenseData) {
 
         for (const targetUserId of targetMemberIds) {
             const targetDoc = await db.collection("users").doc(targetUserId).get();
-            const fcmToken = targetDoc.data()?.fcmToken;
+            const targetData = targetDoc.data();
+            const fcmToken = targetData?.fcmToken;
+            const notificationsEnabled = targetData?.notificationsEnabled ?? true;
+            const mutedUids = targetData?.mutedUids || [];
 
             if (!fcmToken) continue;
+
+            if (notificationsEnabled === false) {
+                console.log(`Notifications disabled by user ${targetUserId}, skipping group expense.`);
+                continue;
+            }
+
+            if (mutedUids.includes(createdBy) || mutedUids.includes(groupId)) {
+                console.log(`Notifications for group ${groupId} or user ${createdBy} muted by user ${targetUserId}, skipping group expense.`);
+                continue;
+            }
 
             await messaging.send({
                 token: fcmToken,

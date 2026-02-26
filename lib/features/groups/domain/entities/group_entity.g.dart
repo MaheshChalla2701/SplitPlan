@@ -10,7 +10,9 @@ _$GroupEntityImpl _$$GroupEntityImplFromJson(Map<String, dynamic> json) =>
     _$GroupEntityImpl(
       id: json['id'] as String,
       name: json['name'] as String,
-      adminId: json['adminId'] as String,
+      adminIds: (json['adminIds'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
       memberIds: (json['memberIds'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
@@ -22,7 +24,7 @@ Map<String, dynamic> _$$GroupEntityImplToJson(_$GroupEntityImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'adminId': instance.adminId,
+      'adminIds': instance.adminIds,
       'memberIds': instance.memberIds,
       'createdAt': instance.createdAt.toIso8601String(),
       'metadata': instance.metadata,

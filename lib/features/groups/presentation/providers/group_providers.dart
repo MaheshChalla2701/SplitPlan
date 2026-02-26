@@ -57,4 +57,11 @@ class GroupController extends _$GroupController {
       await ref.read(groupRepositoryProvider).addMember(groupId, userId);
     });
   }
+
+  Future<void> makeAdmin(String groupId, String userId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(groupRepositoryProvider).makeAdmin(groupId, userId);
+    });
+  }
 }

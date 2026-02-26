@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
@@ -1081,6 +1082,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Navigator.pop(context);
               context.push('/change-password');
             },
+          ),
+          SwitchListTile(
+            title: const Text('Push Notifications'),
+            value: user.notificationsEnabled,
+            onChanged: (value) async {
+              try {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.id)
+                    .update({'notificationsEnabled': value});
+                // ignore: unused_result
+                ref.refresh(authStateProvider);
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            secondary: const Icon(Icons.notifications_active_outlined),
+            activeColor: Theme.of(context).primaryColor,
           ),
           const Divider(),
           ListTile(

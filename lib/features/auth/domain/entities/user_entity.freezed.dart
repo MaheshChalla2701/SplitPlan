@@ -30,8 +30,10 @@ mixin _$UserEntity {
   String? get upiId => throw _privateConstructorUsedError;
   bool get isSearchable => throw _privateConstructorUsedError;
   bool get isManual => throw _privateConstructorUsedError;
+  bool get notificationsEnabled => throw _privateConstructorUsedError;
   String? get ownerId => throw _privateConstructorUsedError;
   List<String> get friends => throw _privateConstructorUsedError;
+  List<String> get mutedUids => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
@@ -62,8 +64,10 @@ abstract class $UserEntityCopyWith<$Res> {
     String? upiId,
     bool isSearchable,
     bool isManual,
+    bool notificationsEnabled,
     String? ownerId,
     List<String> friends,
+    List<String> mutedUids,
     DateTime createdAt,
     DateTime? updatedAt,
   });
@@ -93,8 +97,10 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
     Object? upiId = freezed,
     Object? isSearchable = null,
     Object? isManual = null,
+    Object? notificationsEnabled = null,
     Object? ownerId = freezed,
     Object? friends = null,
+    Object? mutedUids = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
   }) {
@@ -136,6 +142,10 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
                 ? _value.isManual
                 : isManual // ignore: cast_nullable_to_non_nullable
                       as bool,
+            notificationsEnabled: null == notificationsEnabled
+                ? _value.notificationsEnabled
+                : notificationsEnabled // ignore: cast_nullable_to_non_nullable
+                      as bool,
             ownerId: freezed == ownerId
                 ? _value.ownerId
                 : ownerId // ignore: cast_nullable_to_non_nullable
@@ -143,6 +153,10 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
             friends: null == friends
                 ? _value.friends
                 : friends // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
+            mutedUids: null == mutedUids
+                ? _value.mutedUids
+                : mutedUids // ignore: cast_nullable_to_non_nullable
                       as List<String>,
             createdAt: null == createdAt
                 ? _value.createdAt
@@ -177,8 +191,10 @@ abstract class _$$UserEntityImplCopyWith<$Res>
     String? upiId,
     bool isSearchable,
     bool isManual,
+    bool notificationsEnabled,
     String? ownerId,
     List<String> friends,
+    List<String> mutedUids,
     DateTime createdAt,
     DateTime? updatedAt,
   });
@@ -207,8 +223,10 @@ class __$$UserEntityImplCopyWithImpl<$Res>
     Object? upiId = freezed,
     Object? isSearchable = null,
     Object? isManual = null,
+    Object? notificationsEnabled = null,
     Object? ownerId = freezed,
     Object? friends = null,
+    Object? mutedUids = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
   }) {
@@ -250,6 +268,10 @@ class __$$UserEntityImplCopyWithImpl<$Res>
             ? _value.isManual
             : isManual // ignore: cast_nullable_to_non_nullable
                   as bool,
+        notificationsEnabled: null == notificationsEnabled
+            ? _value.notificationsEnabled
+            : notificationsEnabled // ignore: cast_nullable_to_non_nullable
+                  as bool,
         ownerId: freezed == ownerId
             ? _value.ownerId
             : ownerId // ignore: cast_nullable_to_non_nullable
@@ -257,6 +279,10 @@ class __$$UserEntityImplCopyWithImpl<$Res>
         friends: null == friends
             ? _value._friends
             : friends // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        mutedUids: null == mutedUids
+            ? _value._mutedUids
+            : mutedUids // ignore: cast_nullable_to_non_nullable
                   as List<String>,
         createdAt: null == createdAt
             ? _value.createdAt
@@ -284,11 +310,14 @@ class _$UserEntityImpl implements _UserEntity {
     this.upiId,
     this.isSearchable = true,
     this.isManual = false,
+    this.notificationsEnabled = true,
     this.ownerId,
     final List<String> friends = const [],
+    final List<String> mutedUids = const [],
     required this.createdAt,
     this.updatedAt,
-  }) : _friends = friends;
+  }) : _friends = friends,
+       _mutedUids = mutedUids;
 
   factory _$UserEntityImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserEntityImplFromJson(json);
@@ -314,6 +343,9 @@ class _$UserEntityImpl implements _UserEntity {
   @JsonKey()
   final bool isManual;
   @override
+  @JsonKey()
+  final bool notificationsEnabled;
+  @override
   final String? ownerId;
   final List<String> _friends;
   @override
@@ -324,6 +356,15 @@ class _$UserEntityImpl implements _UserEntity {
     return EqualUnmodifiableListView(_friends);
   }
 
+  final List<String> _mutedUids;
+  @override
+  @JsonKey()
+  List<String> get mutedUids {
+    if (_mutedUids is EqualUnmodifiableListView) return _mutedUids;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_mutedUids);
+  }
+
   @override
   final DateTime createdAt;
   @override
@@ -331,7 +372,7 @@ class _$UserEntityImpl implements _UserEntity {
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, upiId: $upiId, isSearchable: $isSearchable, isManual: $isManual, ownerId: $ownerId, friends: $friends, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, upiId: $upiId, isSearchable: $isSearchable, isManual: $isManual, notificationsEnabled: $notificationsEnabled, ownerId: $ownerId, friends: $friends, mutedUids: $mutedUids, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -353,8 +394,14 @@ class _$UserEntityImpl implements _UserEntity {
                 other.isSearchable == isSearchable) &&
             (identical(other.isManual, isManual) ||
                 other.isManual == isManual) &&
+            (identical(other.notificationsEnabled, notificationsEnabled) ||
+                other.notificationsEnabled == notificationsEnabled) &&
             (identical(other.ownerId, ownerId) || other.ownerId == ownerId) &&
             const DeepCollectionEquality().equals(other._friends, _friends) &&
+            const DeepCollectionEquality().equals(
+              other._mutedUids,
+              _mutedUids,
+            ) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -374,8 +421,10 @@ class _$UserEntityImpl implements _UserEntity {
     upiId,
     isSearchable,
     isManual,
+    notificationsEnabled,
     ownerId,
     const DeepCollectionEquality().hash(_friends),
+    const DeepCollectionEquality().hash(_mutedUids),
     createdAt,
     updatedAt,
   );
@@ -405,8 +454,10 @@ abstract class _UserEntity implements UserEntity {
     final String? upiId,
     final bool isSearchable,
     final bool isManual,
+    final bool notificationsEnabled,
     final String? ownerId,
     final List<String> friends,
+    final List<String> mutedUids,
     required final DateTime createdAt,
     final DateTime? updatedAt,
   }) = _$UserEntityImpl;
@@ -433,9 +484,13 @@ abstract class _UserEntity implements UserEntity {
   @override
   bool get isManual;
   @override
+  bool get notificationsEnabled;
+  @override
   String? get ownerId;
   @override
   List<String> get friends;
+  @override
+  List<String> get mutedUids;
   @override
   DateTime get createdAt;
   @override
