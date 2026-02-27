@@ -1102,7 +1102,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               }
             },
             secondary: const Icon(Icons.notifications_active_outlined),
-            activeColor: Theme.of(context).primaryColor,
+            activeThumbColor: Theme.of(context).primaryColor,
           ),
           const Divider(),
           ListTile(

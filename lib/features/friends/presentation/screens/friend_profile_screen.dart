@@ -94,7 +94,7 @@ class FriendProfileScreen extends ConsumerWidget {
                   subtitle: const Text('For direct payments and common groups'),
                   secondary: const Icon(Icons.notifications_off_outlined),
                   value: isMuted,
-                  activeColor: Theme.of(context).primaryColor,
+                  activeThumbColor: Theme.of(context).primaryColor,
                   onChanged: (value) async {
                     try {
                       final updatedMutedUids = List<String>.from(

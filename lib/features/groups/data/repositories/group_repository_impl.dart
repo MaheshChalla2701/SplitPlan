@@ -53,6 +53,8 @@ class GroupRepositoryImpl implements GroupRepository {
       final data = doc.data();
       return GroupEntity.fromJson({
         'id': doc.id,
+        'adminIds': data['adminIds'] ?? <String>[],
+        'memberIds': data['memberIds'] ?? <String>[],
         ...data,
         'createdAt': (data['createdAt'] as Timestamp)
             .toDate()
@@ -75,6 +77,8 @@ class GroupRepositoryImpl implements GroupRepository {
             final data = doc.data();
             return GroupEntity.fromJson({
               'id': doc.id,
+              'adminIds': data['adminIds'] ?? <String>[],
+              'memberIds': data['memberIds'] ?? <String>[],
               ...data,
               'createdAt': (data['createdAt'] as Timestamp)
                   .toDate()
@@ -106,6 +110,8 @@ class GroupRepositoryImpl implements GroupRepository {
       final data = doc.data()!;
       return GroupEntity.fromJson({
         'id': doc.id,
+        'adminIds': data['adminIds'] ?? <String>[],
+        'memberIds': data['memberIds'] ?? <String>[],
         ...data,
         'createdAt': (data['createdAt'] as Timestamp)
             .toDate()
@@ -137,6 +143,8 @@ class GroupRepositoryImpl implements GroupRepository {
     final data = doc.data()!;
     return GroupEntity.fromJson({
       'id': doc.id,
+      'adminIds': data['adminIds'] ?? <String>[],
+      'memberIds': data['memberIds'] ?? <String>[],
       ...data,
       'createdAt': (data['createdAt'] as Timestamp).toDate().toIso8601String(),
     });
