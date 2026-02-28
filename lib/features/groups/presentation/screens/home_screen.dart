@@ -9,6 +9,7 @@ import '../../../auth/domain/entities/user_entity.dart';
 import '../../../payments/domain/entities/payment_request_entity.dart';
 import '../../../payments/presentation/providers/payment_request_providers.dart';
 import '../providers/group_providers.dart';
+import '../../../../core/providers/theme_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -1102,6 +1103,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               }
             },
             secondary: const Icon(Icons.notifications_active_outlined),
+            activeThumbColor: Theme.of(context).primaryColor,
+          ),
+          SwitchListTile(
+            title: const Text('Dark Mode'),
+            value: ref.watch(themeProvider) == ThemeMode.dark,
+            onChanged: (isDark) {
+              ref.read(themeProvider.notifier).toggleTheme(isDark);
+            },
+            secondary: Icon(
+              ref.watch(themeProvider) == ThemeMode.dark
+                  ? Icons.dark_mode
+                  : Icons.light_mode,
+            ),
             activeThumbColor: Theme.of(context).primaryColor,
           ),
           const Divider(),

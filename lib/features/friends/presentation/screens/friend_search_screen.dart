@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_theme.dart';
+
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/friends_providers.dart';
 
@@ -187,7 +187,9 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
                           icon: const Icon(Icons.add),
                           label: Text('Add "$query" as #manual friend'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -239,9 +241,11 @@ class _FriendSearchScreenState extends ConsumerState<FriendSearchScreen> {
                                   ),
                                 ),
                                 trailing: isAlreadyFriend || isAccepted
-                                    ? const Chip(
-                                        label: Text('Friends'),
-                                        backgroundColor: AppTheme.primaryColor,
+                                    ? Chip(
+                                        label: const Text('Friends'),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                       )
                                     : (hasPendingRequest || isSentLocal)
                                     ? const Chip(

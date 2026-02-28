@@ -480,12 +480,21 @@ class FriendDetailScreen extends ConsumerWidget {
                                 subtitleText +=
                                     ' \$${request.amount.toStringAsFixed(2)}';
 
-                                // WhatsApp Style Colors
-                                final sentColor =
-                                    Colors.grey[200]; // Light gray for sent
-                                final receivedColor = Colors.white;
-                                final settleColor = Colors
-                                    .green[50]; // Revert to Green for settlements
+                                // Theme-aware colors
+                                final isDark =
+                                    Theme.of(context).brightness ==
+                                    Brightness.dark;
+                                final sentColor = isDark
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest
+                                    : Colors.grey[200];
+                                final receivedColor = Theme.of(
+                                  context,
+                                ).cardColor;
+                                final settleColor = isDark
+                                    ? Colors.green[900]?.withValues(alpha: 0.3)
+                                    : Colors.green[50];
 
                                 final cardColor =
                                     request.type == PaymentRequestType.settle
@@ -576,8 +585,9 @@ class FriendDetailScreen extends ConsumerWidget {
                                                       Text(
                                                         subtitleText,
                                                         style: TextStyle(
-                                                          color:
-                                                              Colors.grey[700],
+                                                          color: Theme.of(context)
+                                                              .colorScheme
+                                                              .onSurfaceVariant,
                                                           fontSize: 13,
                                                         ),
                                                       ),
@@ -1470,7 +1480,7 @@ class FriendDetailScreen extends ConsumerWidget {
                         'Common Groups (${commonGroups.length})',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),

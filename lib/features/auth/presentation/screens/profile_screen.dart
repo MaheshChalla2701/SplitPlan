@@ -79,6 +79,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label: 'UPI ID',
                     value: user.upiId!,
                   ),
+                const SizedBox(height: 24),
                 const SizedBox(height: 32),
 
                 // Edit Details Button

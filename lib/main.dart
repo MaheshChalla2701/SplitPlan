@@ -2,6 +2,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
@@ -16,7 +19,17 @@ void main() async {
   // Initialize push notifications
   await NotificationService.instance.initialize();
 
-  runApp(const ProviderScope(child: SplitPlanApp()));
+  // Initialize SharedPreferences
+  final sharedPreferences = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+      ],
+      child: const SplitPlanApp(),
+    ),
+  );
 }
 
 class SplitPlanApp extends ConsumerWidget {
@@ -25,12 +38,14 @@ class SplitPlanApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
+    final themeMode = ref.watch(themeProvider);
 
     return MaterialApp.router(
       title: 'SplitPlan',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      themeMode: ThemeMode.light,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

@@ -57,10 +57,8 @@ class GroupDetailsScreen extends ConsumerWidget {
         length: 2,
         child: Column(
           children: [
-            TabBar(
-              labelColor: Theme.of(context).primaryColor,
-              unselectedLabelColor: Colors.grey,
-              tabs: const [
+            const TabBar(
+              tabs: [
                 Tab(text: AppConstants.expenses),
                 Tab(text: AppConstants.balances),
               ],
@@ -679,7 +677,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                   'Members',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
