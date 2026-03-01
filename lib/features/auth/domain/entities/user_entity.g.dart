@@ -19,6 +19,7 @@ _$UserEntityImpl _$$UserEntityImplFromJson(
   isSearchable: json['isSearchable'] as bool? ?? true,
   isManual: json['isManual'] as bool? ?? false,
   notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+  isDarkMode: json['isDarkMode'] as bool? ?? false,
   ownerId: json['ownerId'] as String?,
   friends:
       (json['friends'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -44,6 +45,7 @@ Map<String, dynamic> _$$UserEntityImplToJson(_$UserEntityImpl instance) =>
       'isSearchable': instance.isSearchable,
       'isManual': instance.isManual,
       'notificationsEnabled': instance.notificationsEnabled,
+      'isDarkMode': instance.isDarkMode,
       'ownerId': instance.ownerId,
       'friends': instance.friends,
       'mutedUids': instance.mutedUids,

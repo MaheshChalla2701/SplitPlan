@@ -179,7 +179,7 @@ class _GroupProviderElement
   String get groupId => (origin as GroupProvider).groupId;
 }
 
-String _$groupControllerHash() => r'589ce67df72cb28f7b33e48c88d2417c0c14cc07';
+String _$groupControllerHash() => r'd79f21dadbf963004b8ba52f6eacd8c591ffa3c7';
 
 /// See also [GroupController].
 @ProviderFor(GroupController)

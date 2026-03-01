@@ -32,7 +32,7 @@ class NotificationService {
 
     // 3. Set up local notifications plugin (for foreground display)
     const androidInitSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+      '@mipmap/launcher_icon',
     );
     const initSettings = InitializationSettings(android: androidInitSettings);
     await _localNotifications.initialize(initSettings);
@@ -70,7 +70,7 @@ class NotificationService {
           channelDescription: _channelDescription,
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: '@mipmap/launcher_icon',
         ),
       ),
     );

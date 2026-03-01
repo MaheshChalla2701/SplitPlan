@@ -31,6 +31,7 @@ mixin _$UserEntity {
   bool get isSearchable => throw _privateConstructorUsedError;
   bool get isManual => throw _privateConstructorUsedError;
   bool get notificationsEnabled => throw _privateConstructorUsedError;
+  bool get isDarkMode => throw _privateConstructorUsedError;
   String? get ownerId => throw _privateConstructorUsedError;
   List<String> get friends => throw _privateConstructorUsedError;
   List<String> get mutedUids => throw _privateConstructorUsedError;
@@ -65,6 +66,7 @@ abstract class $UserEntityCopyWith<$Res> {
     bool isSearchable,
     bool isManual,
     bool notificationsEnabled,
+    bool isDarkMode,
     String? ownerId,
     List<String> friends,
     List<String> mutedUids,
@@ -98,6 +100,7 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
     Object? isSearchable = null,
     Object? isManual = null,
     Object? notificationsEnabled = null,
+    Object? isDarkMode = null,
     Object? ownerId = freezed,
     Object? friends = null,
     Object? mutedUids = null,
@@ -146,6 +149,10 @@ class _$UserEntityCopyWithImpl<$Res, $Val extends UserEntity>
                 ? _value.notificationsEnabled
                 : notificationsEnabled // ignore: cast_nullable_to_non_nullable
                       as bool,
+            isDarkMode: null == isDarkMode
+                ? _value.isDarkMode
+                : isDarkMode // ignore: cast_nullable_to_non_nullable
+                      as bool,
             ownerId: freezed == ownerId
                 ? _value.ownerId
                 : ownerId // ignore: cast_nullable_to_non_nullable
@@ -192,6 +199,7 @@ abstract class _$$UserEntityImplCopyWith<$Res>
     bool isSearchable,
     bool isManual,
     bool notificationsEnabled,
+    bool isDarkMode,
     String? ownerId,
     List<String> friends,
     List<String> mutedUids,
@@ -224,6 +232,7 @@ class __$$UserEntityImplCopyWithImpl<$Res>
     Object? isSearchable = null,
     Object? isManual = null,
     Object? notificationsEnabled = null,
+    Object? isDarkMode = null,
     Object? ownerId = freezed,
     Object? friends = null,
     Object? mutedUids = null,
@@ -272,6 +281,10 @@ class __$$UserEntityImplCopyWithImpl<$Res>
             ? _value.notificationsEnabled
             : notificationsEnabled // ignore: cast_nullable_to_non_nullable
                   as bool,
+        isDarkMode: null == isDarkMode
+            ? _value.isDarkMode
+            : isDarkMode // ignore: cast_nullable_to_non_nullable
+                  as bool,
         ownerId: freezed == ownerId
             ? _value.ownerId
             : ownerId // ignore: cast_nullable_to_non_nullable
@@ -311,6 +324,7 @@ class _$UserEntityImpl implements _UserEntity {
     this.isSearchable = true,
     this.isManual = false,
     this.notificationsEnabled = true,
+    this.isDarkMode = false,
     this.ownerId,
     final List<String> friends = const [],
     final List<String> mutedUids = const [],
@@ -346,6 +360,9 @@ class _$UserEntityImpl implements _UserEntity {
   @JsonKey()
   final bool notificationsEnabled;
   @override
+  @JsonKey()
+  final bool isDarkMode;
+  @override
   final String? ownerId;
   final List<String> _friends;
   @override
@@ -372,7 +389,7 @@ class _$UserEntityImpl implements _UserEntity {
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, upiId: $upiId, isSearchable: $isSearchable, isManual: $isManual, notificationsEnabled: $notificationsEnabled, ownerId: $ownerId, friends: $friends, mutedUids: $mutedUids, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'UserEntity(id: $id, email: $email, name: $name, username: $username, phoneNumber: $phoneNumber, avatarUrl: $avatarUrl, upiId: $upiId, isSearchable: $isSearchable, isManual: $isManual, notificationsEnabled: $notificationsEnabled, isDarkMode: $isDarkMode, ownerId: $ownerId, friends: $friends, mutedUids: $mutedUids, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -396,6 +413,8 @@ class _$UserEntityImpl implements _UserEntity {
                 other.isManual == isManual) &&
             (identical(other.notificationsEnabled, notificationsEnabled) ||
                 other.notificationsEnabled == notificationsEnabled) &&
+            (identical(other.isDarkMode, isDarkMode) ||
+                other.isDarkMode == isDarkMode) &&
             (identical(other.ownerId, ownerId) || other.ownerId == ownerId) &&
             const DeepCollectionEquality().equals(other._friends, _friends) &&
             const DeepCollectionEquality().equals(
@@ -422,6 +441,7 @@ class _$UserEntityImpl implements _UserEntity {
     isSearchable,
     isManual,
     notificationsEnabled,
+    isDarkMode,
     ownerId,
     const DeepCollectionEquality().hash(_friends),
     const DeepCollectionEquality().hash(_mutedUids),
@@ -455,6 +475,7 @@ abstract class _UserEntity implements UserEntity {
     final bool isSearchable,
     final bool isManual,
     final bool notificationsEnabled,
+    final bool isDarkMode,
     final String? ownerId,
     final List<String> friends,
     final List<String> mutedUids,
@@ -485,6 +506,8 @@ abstract class _UserEntity implements UserEntity {
   bool get isManual;
   @override
   bool get notificationsEnabled;
+  @override
+  bool get isDarkMode;
   @override
   String? get ownerId;
   @override

@@ -16,6 +16,7 @@ class UserEntity with _$UserEntity {
     @Default(true) bool isSearchable,
     @Default(false) bool isManual,
     @Default(true) bool notificationsEnabled,
+    @Default(false) bool isDarkMode,
     String? ownerId,
     @Default([]) List<String> friends,
     @Default([]) List<String> mutedUids,

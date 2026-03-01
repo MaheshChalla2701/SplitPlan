@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../expenses/presentation/providers/expense_providers.dart';
-import '../../../expenses/domain/services/expense_calculator.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
 import '../../domain/entities/group_entity.dart';
 import '../providers/group_providers.dart';
@@ -68,6 +67,32 @@ class GroupDetailsScreen extends ConsumerWidget {
       );
     });
 
+    ref.listen<AsyncValue<void>>(sendFriendRequestControllerProvider, (
+      previous,
+      next,
+    ) {
+      next.whenOrNull(
+        error: (err, stack) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $err'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        },
+        data: (_) {
+          if (previous is AsyncLoading) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Friend request sent!'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+      );
+    });
+
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.pop()),
@@ -121,7 +146,13 @@ class GroupDetailsScreen extends ConsumerWidget {
                         return const Center(child: Text('No expenses yet'));
                       }
                       return ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        reverse: true,
+                        padding: const EdgeInsets.only(
+                          top: 16,
+                          left: 16,
+                          right: 16,
+                          bottom: 100,
+                        ),
                         itemCount: expenses.length,
                         itemBuilder: (context, index) {
                           final expense = expenses[index];
@@ -562,7 +593,7 @@ class GroupDetailsScreen extends ConsumerWidget {
 
                       return balancesAsync.when(
                         data: (data) {
-                          final balances = data as Map<String, Balance>;
+                          final balances = data;
                           if (balances.isEmpty) {
                             return const Center(
                               child: Text('No balances to settle'),
@@ -646,7 +677,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                                         style: TextStyle(
                                           color: color,
                                           fontWeight: FontWeight.bold,
-                                        ),
+                                      ),
                                       ),
                                     ),
                                     title: Text(
@@ -847,6 +878,21 @@ class GroupDetailsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (currentUser != null)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.transparent,
+                    child: Icon(Icons.person_add, color: Colors.blue),
+                  ),
+                  title: const Text(
+                    'Add Member',
+                    style: TextStyle(color: Colors.blue),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAddMemberSheet(context, ref, group);
+                  },
+                ),
               ...group.memberIds.map((memberId) {
                 final isCurrentUser = memberId == currentUserId;
                 final isCurrentUserAdmin =
@@ -893,8 +939,11 @@ class GroupDetailsScreen extends ConsumerWidget {
                           subtitle: username != null
                               ? Text('@$username')
                               : null,
-                          trailing: isMemberAdmin
-                              ? Chip(
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isMemberAdmin)
+                                Chip(
                                   label: const Text('Admin'),
                                   padding: EdgeInsets.zero,
                                   labelStyle: TextStyle(
@@ -911,8 +960,28 @@ class GroupDetailsScreen extends ConsumerWidget {
                                   backgroundColor: Theme.of(
                                     context,
                                   ).colorScheme.primaryContainer,
-                                )
-                              : null,
+                                ),
+                              if (!isCurrentUser &&
+                                  currentUser != null &&
+                                  !currentUser.friends.contains(memberId))
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.person_add_outlined,
+                                    size: 20,
+                                  ),
+                                  color: Theme.of(context).colorScheme.primary,
+                                  onPressed: () {
+                                    ref
+                                        .read(
+                                          sendFriendRequestControllerProvider
+                                              .notifier,
+                                        )
+                                        .sendRequest(memberId);
+                                  },
+                                  tooltip: 'Add Friend',
+                                ),
+                            ],
+                          ),
                           onTap: () {
                             if (isCurrentUserAdmin &&
                                 !isCurrentUser &&
@@ -945,22 +1014,6 @@ class GroupDetailsScreen extends ConsumerWidget {
                   },
                 );
               }),
-              if (currentUser != null &&
-                  group.adminIds.contains(currentUser.id))
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.transparent,
-                    child: Icon(Icons.person_add, color: Colors.blue),
-                  ),
-                  title: const Text(
-                    'Add Member',
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showAddMemberSheet(context, ref, group);
-                  },
-                ),
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.exit_to_app, color: Colors.red),

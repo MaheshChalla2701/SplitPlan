@@ -5,15 +5,11 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.account_balance_wallet, size: 80, color: Colors.indigo),
-            SizedBox(height: 16),
-            CircularProgressIndicator(),
-          ],
+          children: [const CircularProgressIndicator()],
         ),
       ),
     );

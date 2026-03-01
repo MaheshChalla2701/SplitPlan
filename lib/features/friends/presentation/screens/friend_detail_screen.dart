@@ -757,7 +757,7 @@ class FriendDetailScreen extends ConsumerWidget {
                             .sendRequest(friendId);
                       },
                       icon: const Icon(Icons.person_add),
-                      label: const Text('Re-Friend'),
+                      label: const Text('Add Friend'),
                       backgroundColor: Colors.orange,
                     );
                   },

@@ -102,9 +102,13 @@ service cloud.firestore {
       // Authenticated users can create groups
       allow create: if isAuthenticated();
       
-      // Admin can update the group
-      allow update: if isAuthenticated() && 
-        request.auth.uid in resource.data.adminIds;
+      // Admin can update the group, or members can update their own autoAcceptSettings
+      allow update: if isAuthenticated() && (
+        request.auth.uid in resource.data.adminIds ||
+        (request.auth.uid in resource.data.memberIds && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['autoAcceptSettings']) &&
+         request.resource.data.autoAcceptSettings.diff(resource.data.get('autoAcceptSettings', {})).affectedKeys().hasOnly([request.auth.uid]))
+      );
       
       // Admin can delete the group
       allow delete: if isAuthenticated() && 
