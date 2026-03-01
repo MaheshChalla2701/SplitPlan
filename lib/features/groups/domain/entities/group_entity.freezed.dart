@@ -26,6 +26,8 @@ mixin _$GroupEntity {
   List<String> get adminIds => throw _privateConstructorUsedError;
   List<String> get memberIds => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
+  Map<String, bool>? get autoAcceptSettings =>
+      throw _privateConstructorUsedError;
   Map<String, dynamic>? get metadata => throw _privateConstructorUsedError;
 
   /// Serializes this GroupEntity to a JSON map.
@@ -51,6 +53,7 @@ abstract class $GroupEntityCopyWith<$Res> {
     List<String> adminIds,
     List<String> memberIds,
     DateTime createdAt,
+    Map<String, bool>? autoAcceptSettings,
     Map<String, dynamic>? metadata,
   });
 }
@@ -75,6 +78,7 @@ class _$GroupEntityCopyWithImpl<$Res, $Val extends GroupEntity>
     Object? adminIds = null,
     Object? memberIds = null,
     Object? createdAt = null,
+    Object? autoAcceptSettings = freezed,
     Object? metadata = freezed,
   }) {
     return _then(
@@ -99,6 +103,10 @@ class _$GroupEntityCopyWithImpl<$Res, $Val extends GroupEntity>
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
                       as DateTime,
+            autoAcceptSettings: freezed == autoAcceptSettings
+                ? _value.autoAcceptSettings
+                : autoAcceptSettings // ignore: cast_nullable_to_non_nullable
+                      as Map<String, bool>?,
             metadata: freezed == metadata
                 ? _value.metadata
                 : metadata // ignore: cast_nullable_to_non_nullable
@@ -124,6 +132,7 @@ abstract class _$$GroupEntityImplCopyWith<$Res>
     List<String> adminIds,
     List<String> memberIds,
     DateTime createdAt,
+    Map<String, bool>? autoAcceptSettings,
     Map<String, dynamic>? metadata,
   });
 }
@@ -147,6 +156,7 @@ class __$$GroupEntityImplCopyWithImpl<$Res>
     Object? adminIds = null,
     Object? memberIds = null,
     Object? createdAt = null,
+    Object? autoAcceptSettings = freezed,
     Object? metadata = freezed,
   }) {
     return _then(
@@ -171,6 +181,10 @@ class __$$GroupEntityImplCopyWithImpl<$Res>
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
                   as DateTime,
+        autoAcceptSettings: freezed == autoAcceptSettings
+            ? _value._autoAcceptSettings
+            : autoAcceptSettings // ignore: cast_nullable_to_non_nullable
+                  as Map<String, bool>?,
         metadata: freezed == metadata
             ? _value._metadata
             : metadata // ignore: cast_nullable_to_non_nullable
@@ -189,9 +203,11 @@ class _$GroupEntityImpl implements _GroupEntity {
     required final List<String> adminIds,
     required final List<String> memberIds,
     required this.createdAt,
+    final Map<String, bool>? autoAcceptSettings,
     final Map<String, dynamic>? metadata,
   }) : _adminIds = adminIds,
        _memberIds = memberIds,
+       _autoAcceptSettings = autoAcceptSettings,
        _metadata = metadata;
 
   factory _$GroupEntityImpl.fromJson(Map<String, dynamic> json) =>
@@ -219,6 +235,17 @@ class _$GroupEntityImpl implements _GroupEntity {
 
   @override
   final DateTime createdAt;
+  final Map<String, bool>? _autoAcceptSettings;
+  @override
+  Map<String, bool>? get autoAcceptSettings {
+    final value = _autoAcceptSettings;
+    if (value == null) return null;
+    if (_autoAcceptSettings is EqualUnmodifiableMapView)
+      return _autoAcceptSettings;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
+
   final Map<String, dynamic>? _metadata;
   @override
   Map<String, dynamic>? get metadata {
@@ -231,7 +258,7 @@ class _$GroupEntityImpl implements _GroupEntity {
 
   @override
   String toString() {
-    return 'GroupEntity(id: $id, name: $name, adminIds: $adminIds, memberIds: $memberIds, createdAt: $createdAt, metadata: $metadata)';
+    return 'GroupEntity(id: $id, name: $name, adminIds: $adminIds, memberIds: $memberIds, createdAt: $createdAt, autoAcceptSettings: $autoAcceptSettings, metadata: $metadata)';
   }
 
   @override
@@ -248,6 +275,10 @@ class _$GroupEntityImpl implements _GroupEntity {
             ) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
+            const DeepCollectionEquality().equals(
+              other._autoAcceptSettings,
+              _autoAcceptSettings,
+            ) &&
             const DeepCollectionEquality().equals(other._metadata, _metadata));
   }
 
@@ -260,6 +291,7 @@ class _$GroupEntityImpl implements _GroupEntity {
     const DeepCollectionEquality().hash(_adminIds),
     const DeepCollectionEquality().hash(_memberIds),
     createdAt,
+    const DeepCollectionEquality().hash(_autoAcceptSettings),
     const DeepCollectionEquality().hash(_metadata),
   );
 
@@ -284,6 +316,7 @@ abstract class _GroupEntity implements GroupEntity {
     required final List<String> adminIds,
     required final List<String> memberIds,
     required final DateTime createdAt,
+    final Map<String, bool>? autoAcceptSettings,
     final Map<String, dynamic>? metadata,
   }) = _$GroupEntityImpl;
 
@@ -300,6 +333,8 @@ abstract class _GroupEntity implements GroupEntity {
   List<String> get memberIds;
   @override
   DateTime get createdAt;
+  @override
+  Map<String, bool>? get autoAcceptSettings;
   @override
   Map<String, dynamic>? get metadata;
 

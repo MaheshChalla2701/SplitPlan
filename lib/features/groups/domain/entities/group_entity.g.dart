@@ -17,6 +17,8 @@ _$GroupEntityImpl _$$GroupEntityImplFromJson(Map<String, dynamic> json) =>
           .map((e) => e as String)
           .toList(),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      autoAcceptSettings: (json['autoAcceptSettings'] as Map<String, dynamic>?)
+          ?.map((k, e) => MapEntry(k, e as bool)),
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
 
@@ -27,5 +29,6 @@ Map<String, dynamic> _$$GroupEntityImplToJson(_$GroupEntityImpl instance) =>
       'adminIds': instance.adminIds,
       'memberIds': instance.memberIds,
       'createdAt': instance.createdAt.toIso8601String(),
+      'autoAcceptSettings': instance.autoAcceptSettings,
       'metadata': instance.metadata,
     };

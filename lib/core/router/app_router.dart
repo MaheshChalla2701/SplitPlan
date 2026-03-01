@@ -143,10 +143,13 @@ GoRouter goRouter(Ref ref) {
               final groupId = state.pathParameters['id']!;
               final toUserId = state.uri.queryParameters['toUserId']!;
               final amount = double.parse(state.uri.queryParameters['amount']!);
+              final isReceiving =
+                  state.uri.queryParameters['isReceiving'] == 'true';
               return SettleUpScreen(
                 groupId: groupId,
                 toUserId: toUserId,
                 amount: amount,
+                isReceiving: isReceiving,
               );
             },
           ),

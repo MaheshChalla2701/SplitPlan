@@ -11,4 +11,9 @@ abstract class GroupRepository {
   Future<void> removeMember(String groupId, String userId);
   Future<GroupEntity> getGroup(String groupId);
   Future<void> makeAdmin(String groupId, String userId);
+  Future<void> updateAutoAccept(
+    String groupId,
+    String userId,
+    bool isAutoAccept,
+  );
 }

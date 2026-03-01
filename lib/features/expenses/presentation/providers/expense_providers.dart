@@ -161,7 +161,7 @@ class ExpenseController extends _$ExpenseController {
 
 // Balances Provider — reactive; re-runs whenever expenses or settlements change
 @riverpod
-Future<Map<String, double>> groupBalances(Ref ref, String groupId) async {
+Future<Map<String, Balance>> groupBalances(Ref ref, String groupId) async {
   // Watching these stream providers means this Future re-evaluates on every emission
   final expenses = await ref.watch(groupExpensesProvider(groupId).future);
   final settlements = await ref.watch(groupSettlementsProvider(groupId).future);
@@ -169,18 +169,20 @@ Future<Map<String, double>> groupBalances(Ref ref, String groupId) async {
   // Fetch the group membership to get all member IDs
   final group = await ref.watch(groupRepositoryProvider).getGroup(groupId);
 
-  // Filter to only APPROVED expenses:
-  // An expense is approved if everyone who is involved (paidBy or splitBetween)
-  // has their userId in the acceptedBy list.
+  // Filter for expenses to include in balance calculation:
+  // We include an expense if the person who PAID it has accepted it.
+  // This ensures balances update immediately for everyone once the payer confirms.
   final approvedExpenses = expenses.where((expense) {
-    final involvedIds = <String>{};
-    for (var p in expense.paidBy) {
-      if (p.amount > 0) involvedIds.add(p.userId);
-    }
-    for (var s in expense.splitBetween) {
-      if (s.amount > 0) involvedIds.add(s.userId);
-    }
-    return involvedIds.every((id) => expense.acceptedBy.contains(id));
+    final payerIds = expense.paidBy
+        .where((p) => p.amount > 0)
+        .map((p) => p.userId)
+        .toSet();
+
+    // If no one paid (shouldn't happen), it's not approved.
+    if (payerIds.isEmpty) return false;
+
+    // Check if ALL payers have accepted (usually there's only one payer).
+    return payerIds.every((id) => expense.acceptedBy.contains(id));
   }).toList();
 
   final calculator = ExpenseCalculator();
@@ -190,5 +192,5 @@ Future<Map<String, double>> groupBalances(Ref ref, String groupId) async {
     group.memberIds,
   );
 
-  return balancesMap.map((key, value) => MapEntry(key, value.netBalance));
+  return balancesMap;
 }

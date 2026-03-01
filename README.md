@@ -326,10 +326,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 👨‍💻 Author
 
 **Mahesh Challa**
@@ -343,7 +339,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Support
 
-For support, email maheshchalla2701@gmail.com or open an issue in the repository.
+For support, email mahesh.ch2701@gmail.com or open an issue in the repository.
 
 ---
 

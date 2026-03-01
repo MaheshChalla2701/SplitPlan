@@ -12,12 +12,14 @@ class SettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String toUserId;
   final double amount; // Recommended amount
+  final bool isReceiving;
 
   const SettleUpScreen({
     super.key,
     required this.groupId,
     required this.toUserId,
     required this.amount,
+    this.isReceiving = false,
   });
 
   @override
@@ -53,8 +55,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             .read(settlementControllerProvider.notifier)
             .recordSettlement(
               groupId: widget.groupId,
-              fromUserId: user.id,
-              toUserId: widget.toUserId,
+              fromUserId: widget.isReceiving ? widget.toUserId : user.id,
+              toUserId: widget.isReceiving ? user.id : widget.toUserId,
               amount: amount,
             );
       }
@@ -95,13 +97,17 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             children: [
               friendAsync.when(
                 data: (friend) => Text(
-                  'Paying ${friend?.name ?? "User"}',
+                  widget.isReceiving
+                      ? 'Receiving ₹${_amountController.text} from ${friend?.name ?? "User"}'
+                      : 'Paying ${friend?.name ?? "User"}',
                   style: Theme.of(context).textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stackTrace) => Text(
-                  'Paying User ${widget.toUserId}',
+                  widget.isReceiving
+                      ? 'Receiving payment from ${widget.toUserId}'
+                      : 'Paying User ${widget.toUserId}',
                   style: Theme.of(context).textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
@@ -355,7 +361,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Confirm & Record Settlement'),
+                    : Text(
+                        widget.isReceiving
+                            ? 'Confirm & Record Payment Received'
+                            : 'Confirm & Record Settlement',
+                      ),
               ),
               const SizedBox(height: 8),
               const Text(

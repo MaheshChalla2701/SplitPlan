@@ -11,6 +11,7 @@ class GroupEntity with _$GroupEntity {
     required List<String> adminIds,
     required List<String> memberIds,
     required DateTime createdAt,
+    Map<String, bool>? autoAcceptSettings,
     Map<String, dynamic>? metadata, // For future planning features
   }) = _GroupEntity;
 

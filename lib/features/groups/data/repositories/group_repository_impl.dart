@@ -31,6 +31,7 @@ class GroupRepositoryImpl implements GroupRepository {
       'adminIds': adminIds,
       'memberIds': memberIds,
       'createdAt': Timestamp.fromDate(now),
+      'autoAcceptSettings': {},
       'metadata': {},
     });
 
@@ -59,6 +60,9 @@ class GroupRepositoryImpl implements GroupRepository {
         'createdAt': (data['createdAt'] as Timestamp)
             .toDate()
             .toIso8601String(),
+        'autoAcceptSettings': Map<String, bool>.from(
+          data['autoAcceptSettings'] ?? {},
+        ),
       });
     }).toList();
 
@@ -83,6 +87,9 @@ class GroupRepositoryImpl implements GroupRepository {
               'createdAt': (data['createdAt'] as Timestamp)
                   .toDate()
                   .toIso8601String(),
+              'autoAcceptSettings': Map<String, bool>.from(
+                data['autoAcceptSettings'] ?? {},
+              ),
             });
           }).toList();
           // Sort in Dart to avoid needing a composite Firestore index
@@ -97,6 +104,7 @@ class GroupRepositoryImpl implements GroupRepository {
       'name': group.name,
       'adminIds': group.adminIds,
       'memberIds': group.memberIds,
+      'autoAcceptSettings': group.autoAcceptSettings,
       'metadata': group.metadata,
     });
   }
@@ -116,6 +124,9 @@ class GroupRepositoryImpl implements GroupRepository {
         'createdAt': (data['createdAt'] as Timestamp)
             .toDate()
             .toIso8601String(),
+        'autoAcceptSettings': Map<String, bool>.from(
+          data['autoAcceptSettings'] ?? {},
+        ),
       });
     });
   }
@@ -147,6 +158,9 @@ class GroupRepositoryImpl implements GroupRepository {
       'memberIds': data['memberIds'] ?? <String>[],
       ...data,
       'createdAt': (data['createdAt'] as Timestamp).toDate().toIso8601String(),
+      'autoAcceptSettings': Map<String, bool>.from(
+        data['autoAcceptSettings'] ?? {},
+      ),
     });
   }
 
@@ -154,6 +168,17 @@ class GroupRepositoryImpl implements GroupRepository {
   Future<void> makeAdmin(String groupId, String userId) async {
     await _firestore.collection('groups').doc(groupId).update({
       'adminIds': FieldValue.arrayUnion([userId]),
+    });
+  }
+
+  @override
+  Future<void> updateAutoAccept(
+    String groupId,
+    String userId,
+    bool isAutoAccept,
+  ) async {
+    await _firestore.collection('groups').doc(groupId).update({
+      'autoAcceptSettings.$userId': isAutoAccept,
     });
   }
 }

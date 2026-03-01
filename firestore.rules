@@ -104,11 +104,11 @@ service cloud.firestore {
       
       // Admin can update the group
       allow update: if isAuthenticated() && 
-        resource.data.adminId == request.auth.uid;
+        request.auth.uid in resource.data.adminIds;
       
       // Admin can delete the group
       allow delete: if isAuthenticated() && 
-        resource.data.adminId == request.auth.uid;
+        request.auth.uid in resource.data.adminIds;
     }
 
     // Expenses collection
@@ -126,15 +126,18 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
         request.auth.uid in getGroup(request.resource.data.groupId).data.memberIds;
       
-      // Creator or admin can update expenses
-      allow update: if isAuthenticated() && 
-        (resource.data.createdBy == request.auth.uid || 
-         getGroup(resource.data.groupId).data.adminId == request.auth.uid);
+      // Creator or admin can update expenses, or any member can accept
+      allow update: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid || 
+        request.auth.uid in getGroup(resource.data.groupId).data.adminIds ||
+        (request.auth.uid in getGroup(resource.data.groupId).data.memberIds && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedBy']))
+      );
       
       // Creator or admin can delete expenses
       allow delete: if isAuthenticated() && 
         (resource.data.createdBy == request.auth.uid || 
-         getGroup(resource.data.groupId).data.adminId == request.auth.uid);
+         request.auth.uid in getGroup(resource.data.groupId).data.adminIds);
     }
 
     // Settlements collection
@@ -159,7 +162,7 @@ service cloud.firestore {
       
       // Admin can delete settlements
       allow delete: if isAuthenticated() && 
-        getGroup(resource.data.groupId).data.adminId == request.auth.uid;
+        request.auth.uid in getGroup(resource.data.groupId).data.adminIds;
     }
   }
 }

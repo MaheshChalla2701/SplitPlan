@@ -1528,7 +1528,7 @@ class FriendDetailScreen extends ConsumerWidget {
             ),
           ListTile(
             leading: const Icon(
-              Icons.cleaning_services_outlined,
+              Icons.delete_sweep_outlined,
               color: Colors.orange,
             ),
             title: const Text('Clear Chat'),

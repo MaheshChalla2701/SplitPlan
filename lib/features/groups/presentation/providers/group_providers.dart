@@ -64,4 +64,17 @@ class GroupController extends _$GroupController {
       await ref.read(groupRepositoryProvider).makeAdmin(groupId, userId);
     });
   }
+
+  Future<void> updateAutoAccept(
+    String groupId,
+    String userId,
+    bool isAutoAccept,
+  ) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref
+          .read(groupRepositoryProvider)
+          .updateAutoAccept(groupId, userId, isAutoAccept);
+    });
+  }
 }

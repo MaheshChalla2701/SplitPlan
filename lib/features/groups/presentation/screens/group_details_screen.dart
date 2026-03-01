@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../expenses/presentation/providers/expense_providers.dart';
+import '../../../expenses/domain/services/expense_calculator.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
 import '../../domain/entities/group_entity.dart';
 import '../providers/group_providers.dart';
@@ -19,6 +21,52 @@ class GroupDetailsScreen extends ConsumerWidget {
     final groupAsync = ref.watch(groupProvider(groupId));
     final expensesAsync = ref.watch(groupExpensesProvider(groupId));
     final currentUserId = ref.watch(authStateProvider).value?.id;
+
+    ref.listen<AsyncValue<void>>(expenseControllerProvider, (previous, next) {
+      next.whenOrNull(
+        error: (err, stack) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $err'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        },
+        data: (_) {
+          if (previous is AsyncLoading) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Action successful'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+      );
+    });
+
+    ref.listen<AsyncValue<void>>(groupControllerProvider, (previous, next) {
+      next.whenOrNull(
+        error: (err, stack) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $err'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        },
+        data: (_) {
+          if (previous is AsyncLoading) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Action successful'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+      );
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -259,7 +307,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                                                 ),
                                               ),
                                             ],
-                                            const SizedBox(width: 8),
+                                            const SizedBox(height: 4),
                                             SizedBox(
                                               width: 32,
                                               height: 32,
@@ -286,6 +334,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                                                       ref,
                                                       expense,
                                                       involvedIds,
+                                                      currentUserId,
                                                     );
                                                   } else if (value == 'edit') {
                                                     context.push(
@@ -385,6 +434,43 @@ class GroupDetailsScreen extends ConsumerWidget {
                                                       .onSurfaceVariant,
                                           ),
                                         ),
+                                        if (expense.splitBetween.any(
+                                          (s) => s.userId == currentUserId,
+                                        )) ...[
+                                          Builder(
+                                            builder: (context) {
+                                              final share = expense.splitBetween
+                                                  .firstWhereOrNull(
+                                                    (s) =>
+                                                        s.userId ==
+                                                        currentUserId,
+                                                  );
+                                              if (share == null) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              final myShare = share.amount;
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 2,
+                                                ),
+                                                child: Text(
+                                                  'Your share: ₹${myShare.toStringAsFixed(2)}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isMe
+                                                        ? Theme.of(context)
+                                                              .colorScheme
+                                                              .onPrimaryContainer
+                                                        : Theme.of(
+                                                            context,
+                                                          ).colorScheme.primary,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
                                         if (!isAcceptedByAll) ...[
                                           const SizedBox(height: 4),
                                           Text(
@@ -475,46 +561,76 @@ class GroupDetailsScreen extends ConsumerWidget {
                       );
 
                       return balancesAsync.when(
-                        data: (balances) {
+                        data: (data) {
+                          final balances = data as Map<String, Balance>;
                           if (balances.isEmpty) {
                             return const Center(
                               child: Text('No balances to settle'),
                             );
                           }
 
-                          // Filter out zero balances
-                          final balanceEntries = balances.entries
-                              .where((e) => e.value.abs() > 0.01)
-                              .toList();
-
-                          if (balanceEntries.isEmpty) {
-                            return const Center(
-                              child: Text('All settled up! 🎉'),
-                            );
-                          }
+                          // Sort to show current user first, then others by absolute balance
+                          final sortedMemberIds = balances.keys.toList()
+                            ..sort((a, b) {
+                              if (a == currentUserId) return -1;
+                              if (b == currentUserId) return 1;
+                              return (balances[b]?.netBalance.abs() ?? 0)
+                                  .compareTo(
+                                    balances[a]?.netBalance.abs() ?? 0,
+                                  );
+                            });
 
                           return ListView.builder(
                             padding: const EdgeInsets.all(16),
-                            itemCount: balanceEntries.length,
+                            itemCount: sortedMemberIds.length,
                             itemBuilder: (context, index) {
-                              final entry = balanceEntries[index];
-                              final amount = entry.value;
-                              final isPositive = amount > 0;
-                              final color = isPositive
+                              final userId = sortedMemberIds[index];
+                              final balance = balances[userId]!;
+                              final netAmount = balance.netBalance;
+                              final isPositive = netAmount > 0;
+                              final color = netAmount.abs() < 0.01
+                                  ? Theme.of(context).colorScheme.outline
+                                  : isPositive
                                   ? Colors.green
                                   : Colors.red;
 
                               return Consumer(
                                 builder: (context, ref, _) {
                                   final userAsync = ref.watch(
-                                    specificFriendProvider(entry.key),
+                                    specificFriendProvider(userId),
                                   );
 
-                                  final displayName = userAsync.when(
-                                    data: (user) => user?.name ?? entry.key,
-                                    loading: () => '...',
-                                    error: (_, _) => entry.key,
-                                  );
+                                  final displayName = userId == currentUserId
+                                      ? 'You'
+                                      : userAsync.when(
+                                          data: (user) => user?.name ?? userId,
+                                          loading: () => '...',
+                                          error: (_, _) => userId,
+                                        );
+
+                                  // Personalized settlement info
+                                  final myBalance = balances[currentUserId];
+                                  final iOweThem =
+                                      myBalance?.owes[userId] ?? 0.0;
+                                  final theyOweMe =
+                                      myBalance?.owedBy[userId] ?? 0.0;
+
+                                  String subtitle = '';
+                                  if (userId == currentUserId) {
+                                    subtitle = netAmount >= 0
+                                        ? 'Total to receive'
+                                        : 'Total to pay';
+                                  } else if (iOweThem > 0) {
+                                    subtitle =
+                                        'You owe them ₹${iOweThem.toStringAsFixed(2)}';
+                                  } else if (theyOweMe > 0) {
+                                    subtitle =
+                                        'Owes you ₹${theyOweMe.toStringAsFixed(2)}';
+                                  } else {
+                                    subtitle = netAmount >= 0
+                                        ? 'Gets back'
+                                        : 'Owes';
+                                  }
 
                                   return ListTile(
                                     leading: CircleAvatar(
@@ -522,9 +638,11 @@ class GroupDetailsScreen extends ConsumerWidget {
                                         alpha: 0.15,
                                       ),
                                       child: Text(
-                                        displayName.isNotEmpty
-                                            ? displayName[0].toUpperCase()
-                                            : '?',
+                                        displayName == 'You'
+                                            ? 'Y'
+                                            : (displayName.isNotEmpty
+                                                  ? displayName[0].toUpperCase()
+                                                  : '?'),
                                         style: TextStyle(
                                           color: color,
                                           fontWeight: FontWeight.bold,
@@ -538,33 +656,66 @@ class GroupDetailsScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     subtitle: Text(
-                                      isPositive ? 'Gets back' : 'Owes',
-                                      style: TextStyle(color: color),
+                                      subtitle,
+                                      style: TextStyle(
+                                        color: iOweThem > 0
+                                            ? Colors.red
+                                            : theyOweMe > 0
+                                            ? Colors.green
+                                            : color,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                    trailing: Row(
+                                    trailing: Column(
                                       mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
                                       children: [
                                         Text(
-                                          '₹${amount.abs().toStringAsFixed(2)}',
+                                          '₹${netAmount.abs().toStringAsFixed(2)}',
                                           style: TextStyle(
                                             color: color,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
+                                            height: 1.0,
                                           ),
                                         ),
-                                        if (!isPositive) ...[
-                                          const SizedBox(width: 8),
+                                        if (userId != currentUserId &&
+                                            (iOweThem > 0 ||
+                                                theyOweMe > 0)) ...[
                                           FilledButton.tonal(
+                                            style: FilledButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 1,
+                                                  ),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              textStyle: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                height: 1.5,
+                                              ),
+                                            ),
                                             onPressed: () {
+                                              final amount = iOweThem > 0
+                                                  ? iOweThem
+                                                  : theyOweMe;
                                               context.push(
                                                 Uri(
                                                   path:
                                                       '/groups/$groupId/settle',
                                                   queryParameters: {
-                                                    'toUserId': entry.key,
-                                                    'amount': amount
-                                                        .abs()
-                                                        .toString(),
+                                                    'toUserId': userId,
+                                                    'amount': amount.toString(),
+                                                    'isReceiving':
+                                                        (theyOweMe > 0)
+                                                            .toString(),
                                                   },
                                                 ).toString(),
                                               );
@@ -668,6 +819,21 @@ class GroupDetailsScreen extends ConsumerWidget {
                         SnackBar(content: Text('Error updating setting: $e')),
                       );
                     }
+                  },
+                ),
+              if (currentUser != null)
+                SwitchListTile(
+                  title: const Text('Auto Accept Requests'),
+                  subtitle: const Text(
+                    'Automatically accept all new expenses in this group',
+                  ),
+                  secondary: const Icon(Icons.auto_awesome_outlined),
+                  value: group.autoAcceptSettings?[currentUser.id] ?? false,
+                  activeThumbColor: Theme.of(context).primaryColor,
+                  onChanged: (value) {
+                    ref
+                        .read(groupControllerProvider.notifier)
+                        .updateAutoAccept(group.id, currentUser.id, value);
                   },
                 ),
               const Divider(),
@@ -829,6 +995,7 @@ class GroupDetailsScreen extends ConsumerWidget {
     WidgetRef ref,
     dynamic expense, // Expects ExpenseEntity
     Set<String> involvedIds,
+    String? currentUserId,
   ) {
     showModalBottomSheet(
       context: context,
@@ -1021,25 +1188,47 @@ class GroupDetailsScreen extends ConsumerWidget {
                   // Pending Section
                   if (pendingIds.isNotEmpty) ...[
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.access_time_filled,
-                            size: 16,
-                            color: Colors.orange,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.access_time_filled,
+                                size: 16,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Pending (${pendingIds.length})',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Pending (${pendingIds.length})',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
+                        if (currentUserId != null &&
+                            pendingIds.contains(currentUserId))
+                          FilledButton.icon(
+                            onPressed: () {
+                              ref
+                                  .read(expenseControllerProvider.notifier)
+                                  .acceptExpense(expense.id);
+                              Navigator.pop(context);
+                            },
+                            icon: const Icon(Icons.check, size: 16),
+                            label: const Text('Accept'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 12),

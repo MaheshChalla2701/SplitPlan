@@ -9,6 +9,7 @@ import '../../../auth/domain/entities/user_entity.dart';
 import '../../../payments/domain/entities/payment_request_entity.dart';
 import '../../../payments/presentation/providers/payment_request_providers.dart';
 import '../providers/group_providers.dart';
+import '../../../expenses/presentation/providers/expense_providers.dart';
 import '../../../../core/providers/theme_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,14 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = {};
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _toggleSelection(String id) {
     setState(() {
@@ -124,21 +133,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             )
           : AppBar(
-              title: const Text('SplitPlan'),
-              centerTitle: true,
-              leading: Builder(
-                builder: (context) {
-                  return IconButton(
-                    icon: const Icon(Icons.menu),
-                    onPressed: () {
-                      Scaffold.of(context).openDrawer();
-                    },
-                    tooltip: 'Menu',
-                  );
-                },
-              ),
-
+              title: _isSearching
+                  ? TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Search chats...',
+                        border: InputBorder.none,
+                      ),
+                      style: const TextStyle(fontSize: 18),
+                      onChanged: (value) {
+                        setState(() {}); // Trigger rebuild to filter list
+                      },
+                    )
+                  : const Text('SplitPlan'),
+              centerTitle: !_isSearching,
+              leading: _isSearching
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = false;
+                          _searchController.clear();
+                        });
+                      },
+                    )
+                  : Builder(
+                      builder: (context) {
+                        return IconButton(
+                          icon: const Icon(Icons.menu),
+                          onPressed: () {
+                            Scaffold.of(context).openDrawer();
+                          },
+                          tooltip: 'Menu',
+                        );
+                      },
+                    ),
               actions: [
+                if (!_isSearching)
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () {
+                      setState(() {
+                        _isSearching = true;
+                      });
+                    },
+                    tooltip: 'Search',
+                  ),
                 IconButton(
                   onPressed: () {
                     // Show notifications bottom sheet
@@ -474,11 +515,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       isGroup: false,
                       lastActivity: lastActivity,
                       subtitle: subtitle,
+                      notificationCount: validRequests
+                          .where(
+                            (req) =>
+                                req.status == PaymentRequestStatus.pending &&
+                                req.toUserId == currentUserId,
+                          )
+                          .length,
                     );
                   }).toList();
 
                   // 3. Map Groups to ConversationItems
                   final groupItems = groups.map((group) {
+                    // Calculate notification count for group (unaccepted expenses)
+                    final expenses =
+                        ref.watch(groupExpensesProvider(group.id)).value ?? [];
+                    final unacceptedCount = expenses
+                        .where((e) => !e.acceptedBy.contains(currentUserId))
+                        .length;
+
                     // For now, use createdAt.
                     return _ConversationItem(
                       id: group.id,
@@ -488,21 +543,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       isGroup: true,
                       lastActivity: group.createdAt,
                       subtitle: '${group.memberIds.length} members',
+                      notificationCount: unacceptedCount,
                     );
                   }).toList();
 
                   // 4. Combine and Sort
-                  final allItems = [...friendItems, ...groupItems];
+                  final combinedItems = [...friendItems, ...groupItems];
                   // Sort descending (newest first)
-                  allItems.sort(
+                  combinedItems.sort(
                     (a, b) => b.lastActivity.compareTo(a.lastActivity),
                   );
 
+                  // 5. Filter based on Search
+                  final allItems = _searchController.text.isEmpty
+                      ? combinedItems
+                      : combinedItems
+                            .where(
+                              (item) => item.name.toLowerCase().contains(
+                                _searchController.text.toLowerCase(),
+                              ),
+                            )
+                            .toList();
+
                   if (allItems.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Text('No friends or groups yet.'),
+                        padding: const EdgeInsets.all(32.0),
+                        child: Text(
+                          _searchController.text.isEmpty
+                              ? 'No friends or groups yet.'
+                              : 'No results found for "${_searchController.text}"',
+                        ),
                       ),
                     );
                   }
@@ -625,7 +696,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   color: Colors.grey,
                                 ),
                               ),
-                              if (item.isGroup)
+                              if (item.notificationCount > 0)
+                                Badge(
+                                  largeSize: 22,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  label: Text(
+                                    item.notificationCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                )
+                              else if (item.isGroup)
                                 const Icon(
                                   Icons.chevron_right,
                                   size: 16,
@@ -667,6 +756,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildNotificationsSheet(BuildContext context, WidgetRef ref) {
     final paymentRequestsAsync = ref.watch(userPaymentRequestsProvider);
     final friendsAsync = ref.watch(userFriendsProvider);
+    final groupsAsync = ref.watch(userGroupsProvider);
     final userId = ref.read(authStateProvider).value?.id;
 
     return Container(
@@ -800,6 +890,119 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       );
                     },
                   ),
+                  // Group Expense Requests Section
+                  groupsAsync.when(
+                    data: (groups) {
+                      if (groups.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ...groups.map((group) {
+                            return Consumer(
+                              builder: (context, ref, child) {
+                                final expensesAsync = ref.watch(
+                                  groupExpensesProvider(group.id),
+                                );
+                                return expensesAsync.when(
+                                  data: (expenses) {
+                                    final pendingExpenses = expenses.where((e) {
+                                      final involvedIds = <String>{};
+                                      for (var p in e.paidBy) {
+                                        if (p.amount > 0) {
+                                          involvedIds.add(p.userId);
+                                        }
+                                      }
+                                      for (var s in e.splitBetween) {
+                                        if (s.amount > 0) {
+                                          involvedIds.add(s.userId);
+                                        }
+                                      }
+                                      return userId != null &&
+                                          involvedIds.contains(userId) &&
+                                          !e.acceptedBy.contains(userId);
+                                    }).toList();
+
+                                    if (pendingExpenses.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                          child: Text(
+                                            '${group.name} Expenses (${pendingExpenses.length})',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                        ...pendingExpenses.map((expense) {
+                                          return Card(
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            child: ListTile(
+                                              leading: const CircleAvatar(
+                                                child: Icon(Icons.receipt_long),
+                                              ),
+                                              title: Text(
+                                                expense.description,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              subtitle: Text(
+                                                '₹${expense.amount.toStringAsFixed(2)}',
+                                              ),
+                                              trailing: IconButton(
+                                                onPressed: () async {
+                                                  await ref
+                                                      .read(
+                                                        expenseControllerProvider
+                                                            .notifier,
+                                                      )
+                                                      .acceptExpense(
+                                                        expense.id,
+                                                      );
+                                                },
+                                                icon: const Icon(
+                                                  Icons.check,
+                                                  color: Colors.green,
+                                                ),
+                                              ),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                context.push(
+                                                  '/groups/${group.id}',
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        }),
+                                        const Divider(),
+                                      ],
+                                    );
+                                  },
+                                  loading: () => const SizedBox.shrink(),
+                                  error: (_, __) => const SizedBox.shrink(),
+                                );
+                              },
+                            );
+                          }),
+                        ],
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
                   // Payment Requests Section
                   paymentRequestsAsync.when(
                     data: (requests) {
@@ -810,7 +1013,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         return req.status == PaymentRequestStatus.pending;
                       }).toList();
 
-                      if (relevantRequests.isEmpty) {
+                      if (relevantRequests.isEmpty &&
+                          groupsAsync.value?.isEmpty == true) {
                         return const Center(
                           child: Padding(
                             padding: EdgeInsets.all(16.0),
@@ -819,111 +1023,134 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         );
                       }
 
+                      if (relevantRequests.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
                       // Prepare friends map for quick lookup
                       final friends = friendsAsync.value ?? [];
                       final friendsMap = {for (var f in friends) f.id: f};
 
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: relevantRequests.length,
-                        itemBuilder: (context, index) {
-                          final request = relevantRequests[index];
-                          final isIncoming = request.toUserId == userId;
-
-                          final isMyActionRequired =
-                              isIncoming &&
-                              request.type == PaymentRequestType.receive;
-
-                          final friendId = isIncoming
-                              ? request.fromUserId
-                              : request.toUserId;
-
-                          final friendName =
-                              friendsMap[friendId]?.name ?? 'Unknown User';
-
-                          return Card(
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                child: Icon(
-                                  (request.type ==
-                                              PaymentRequestType.receive) !=
-                                          isIncoming
-                                      ? Icons.arrow_downward
-                                      : Icons.arrow_upward,
-                                ),
-                              ),
-                              title: Text(
-                                friendName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${isIncoming ? "Requested from you" : "You requested"} ₹${request.amount}${request.description != null && request.description!.isNotEmpty ? "\n${request.description}" : ""}',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: isMyActionRequired
-                                  ? Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          onPressed: () async {
-                                            // Reject
-                                            await ref
-                                                .read(
-                                                  updatePaymentRequestControllerProvider
-                                                      .notifier,
-                                                )
-                                                .updateStatus(
-                                                  request.id,
-                                                  PaymentRequestStatus.rejected,
-                                                );
-                                            // Don't pop, allow multiple actions
-                                          },
-                                          icon: const Icon(
-                                            Icons.close,
-                                            color: Colors.red,
-                                          ),
-                                        ),
-                                        IconButton(
-                                          onPressed: () async {
-                                            // Accept (Adds to balance)
-                                            await ref
-                                                .read(
-                                                  updatePaymentRequestControllerProvider
-                                                      .notifier,
-                                                )
-                                                .updateStatus(
-                                                  request.id,
-                                                  PaymentRequestStatus.accepted,
-                                                );
-                                          },
-                                          icon: const Icon(
-                                            Icons.check,
-                                            color: Colors.green,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : Chip(
-                                      label: const Text(
-                                        'Pending',
-                                        style: TextStyle(fontSize: 10),
-                                      ),
-                                      backgroundColor: Colors.orange.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      labelPadding: EdgeInsets.zero,
-                                    ),
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.push('/friends/$friendId');
-                              },
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                          );
-                        },
+                            child: Text(
+                              'Payment Requests',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: relevantRequests.length,
+                            itemBuilder: (context, index) {
+                              final request = relevantRequests[index];
+                              final isIncoming = request.toUserId == userId;
+
+                              final isMyActionRequired =
+                                  isIncoming &&
+                                  request.type == PaymentRequestType.receive;
+
+                              final friendId = isIncoming
+                                  ? request.fromUserId
+                                  : request.toUserId;
+
+                              final friendName =
+                                  friendsMap[friendId]?.name ?? 'Unknown User';
+
+                              return Card(
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    child: Icon(
+                                      (request.type ==
+                                                  PaymentRequestType.receive) !=
+                                              isIncoming
+                                          ? Icons.arrow_downward
+                                          : Icons.arrow_upward,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    friendName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${isIncoming ? "Requested from you" : "You requested"} ₹${request.amount}${request.description != null && request.description!.isNotEmpty ? "\n${request.description}" : ""}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: isMyActionRequired
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              onPressed: () async {
+                                                // Reject
+                                                await ref
+                                                    .read(
+                                                      updatePaymentRequestControllerProvider
+                                                          .notifier,
+                                                    )
+                                                    .updateStatus(
+                                                      request.id,
+                                                      PaymentRequestStatus
+                                                          .rejected,
+                                                    );
+                                                // Don't pop, allow multiple actions
+                                              },
+                                              icon: const Icon(
+                                                Icons.close,
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                            IconButton(
+                                              onPressed: () async {
+                                                // Accept (Adds to balance)
+                                                await ref
+                                                    .read(
+                                                      updatePaymentRequestControllerProvider
+                                                          .notifier,
+                                                    )
+                                                    .updateStatus(
+                                                      request.id,
+                                                      PaymentRequestStatus
+                                                          .accepted,
+                                                    );
+                                              },
+                                              icon: const Icon(
+                                                Icons.check,
+                                                color: Colors.green,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Chip(
+                                          label: const Text(
+                                            'Pending',
+                                            style: TextStyle(fontSize: 10),
+                                          ),
+                                          backgroundColor: Colors.orange
+                                              .withValues(alpha: 0.1),
+                                          labelPadding: EdgeInsets.zero,
+                                        ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    context.push('/friends/$friendId');
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       );
                     },
                     loading: () =>
@@ -1181,6 +1408,7 @@ class _ConversationItem {
   final bool isGroup;
   final DateTime lastActivity;
   final String subtitle;
+  final int notificationCount;
 
   _ConversationItem({
     required this.id,
@@ -1189,5 +1417,6 @@ class _ConversationItem {
     required this.isGroup,
     required this.lastActivity,
     required this.subtitle,
+    this.notificationCount = 0,
   });
 }

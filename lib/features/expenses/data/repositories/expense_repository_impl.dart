@@ -12,7 +12,31 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     final docRef = _firestore.collection('expenses').doc();
     final now = DateTime.now();
 
-    final newExpense = expense.copyWith(id: docRef.id, createdAt: now);
+    // 1. Fetch group to check auto-accept settings
+    final groupDoc =
+        await _firestore.collection('groups').doc(expense.groupId).get();
+    final acceptedBy = List<String>.from(expense.acceptedBy);
+
+    if (groupDoc.exists) {
+      final groupData = groupDoc.data();
+      final autoAcceptSettings = Map<String, bool>.from(
+        groupData?['autoAcceptSettings'] ?? {},
+      );
+
+      // Add users who have auto-accept enabled and are in splitBetween
+      for (final split in expense.splitBetween) {
+        if (autoAcceptSettings[split.userId] == true &&
+            !acceptedBy.contains(split.userId)) {
+          acceptedBy.add(split.userId);
+        }
+      }
+    }
+
+    final newExpense = expense.copyWith(
+      id: docRef.id,
+      createdAt: now,
+      acceptedBy: acceptedBy,
+    );
 
     await docRef.set({
       'groupId': newExpense.groupId,

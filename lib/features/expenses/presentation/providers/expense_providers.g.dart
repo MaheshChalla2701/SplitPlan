@@ -166,14 +166,14 @@ class _GroupExpensesProviderElement
   String get groupId => (origin as GroupExpensesProvider).groupId;
 }
 
-String _$groupBalancesHash() => r'498bf58d76d54275299fe78bafcd87032828ffef';
+String _$groupBalancesHash() => r'7341cb5685008ba2a77f9ce53a37ba8ad13b505e';
 
 /// See also [groupBalances].
 @ProviderFor(groupBalances)
 const groupBalancesProvider = GroupBalancesFamily();
 
 /// See also [groupBalances].
-class GroupBalancesFamily extends Family<AsyncValue<Map<String, double>>> {
+class GroupBalancesFamily extends Family<AsyncValue<Map<String, Balance>>> {
   /// See also [groupBalances].
   const GroupBalancesFamily();
 
@@ -206,7 +206,7 @@ class GroupBalancesFamily extends Family<AsyncValue<Map<String, double>>> {
 
 /// See also [groupBalances].
 class GroupBalancesProvider
-    extends AutoDisposeFutureProvider<Map<String, double>> {
+    extends AutoDisposeFutureProvider<Map<String, Balance>> {
   /// See also [groupBalances].
   GroupBalancesProvider(String groupId)
     : this._internal(
@@ -236,7 +236,7 @@ class GroupBalancesProvider
 
   @override
   Override overrideWith(
-    FutureOr<Map<String, double>> Function(GroupBalancesRef provider) create,
+    FutureOr<Map<String, Balance>> Function(GroupBalancesRef provider) create,
   ) {
     return ProviderOverride(
       origin: this,
@@ -253,7 +253,7 @@ class GroupBalancesProvider
   }
 
   @override
-  AutoDisposeFutureProviderElement<Map<String, double>> createElement() {
+  AutoDisposeFutureProviderElement<Map<String, Balance>> createElement() {
     return _GroupBalancesProviderElement(this);
   }
 
@@ -273,13 +273,13 @@ class GroupBalancesProvider
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin GroupBalancesRef on AutoDisposeFutureProviderRef<Map<String, double>> {
+mixin GroupBalancesRef on AutoDisposeFutureProviderRef<Map<String, Balance>> {
   /// The parameter `groupId` of this provider.
   String get groupId;
 }
 
 class _GroupBalancesProviderElement
-    extends AutoDisposeFutureProviderElement<Map<String, double>>
+    extends AutoDisposeFutureProviderElement<Map<String, Balance>>
     with GroupBalancesRef {
   _GroupBalancesProviderElement(super.provider);
 
