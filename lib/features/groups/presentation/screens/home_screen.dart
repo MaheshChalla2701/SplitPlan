@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
@@ -1344,6 +1346,97 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   : Icons.light_mode,
             ),
             activeThumbColor: Theme.of(context).primaryColor,
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.share_outlined),
+            title: const Text('Refer a Friend'),
+            onTap: () {
+              Navigator.pop(context);
+              Share.share(
+                'Check out SplitPlan, the best app for managing expenses! Download it now.',
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('About Us'),
+            onTap: () async {
+              Navigator.pop(context);
+              context.push('/about-us');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('FAQs'),
+            onTap: () async {
+              Navigator.pop(context);
+              context.push('/faq');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.support_agent_outlined),
+            title: const Text('Contact Support'),
+            onTap: () async {
+              Navigator.pop(context);
+              final Uri emailLaunchUri = Uri(
+                scheme: 'mailto',
+                path: 'advi0009@gmail.com',
+                queryParameters: {'subject': 'SplitPlan Support'},
+              );
+              if (await canLaunchUrl(emailLaunchUri)) {
+                await launchUrl(emailLaunchUri);
+              }
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy Policy'),
+            onTap: () async {
+              Navigator.pop(context);
+              final url = Uri.parse(
+                'https://github.com/ADVI9/SplitPlan.help/blob/main/privacy_policy.md',
+              );
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.gavel_outlined),
+            title: const Text('Terms of Service'),
+            onTap: () async {
+              Navigator.pop(context);
+              final url = Uri.parse(
+                'https://github.com/ADVI9/SplitPlan.help/blob/main/terms_of_service.md',
+              );
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(
+              Icons.delete_forever_outlined,
+              color: Colors.orange,
+            ),
+            title: const Text(
+              'Delete Account',
+              style: TextStyle(color: Colors.orange),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              final Uri emailLaunchUri = Uri(
+                scheme: 'mailto',
+                path: 'advi0009@gmail.com',
+                queryParameters: {'subject': 'Delete Account Request'},
+              );
+              if (await canLaunchUrl(emailLaunchUri)) {
+                await launchUrl(emailLaunchUri);
+              }
+            },
           ),
           const Divider(),
           ListTile(

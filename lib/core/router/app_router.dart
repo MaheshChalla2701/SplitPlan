@@ -21,6 +21,8 @@ import '../../features/payments/presentation/screens/create_payment_request_scre
 import '../../features/groups/presentation/screens/group_details_screen.dart';
 import '../../features/groups/presentation/screens/home_screen.dart';
 import '../../features/settlements/presentation/screens/settle_up_screen.dart';
+import '../../features/settings/presentation/screens/faq_screen.dart';
+import '../../features/settings/presentation/screens/about_us_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -154,6 +156,11 @@ GoRouter goRouter(Ref ref) {
             },
           ),
         ],
+      ),
+      GoRoute(path: '/faq', builder: (context, state) => const FaqScreen()),
+      GoRoute(
+        path: '/about-us',
+        builder: (context, state) => const AboutUsScreen(),
       ),
     ],
   );
