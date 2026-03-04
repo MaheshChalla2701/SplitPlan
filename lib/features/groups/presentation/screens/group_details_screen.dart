@@ -9,6 +9,7 @@ import '../../../expenses/presentation/providers/expense_providers.dart';
 import '../../../friends/presentation/providers/friends_providers.dart';
 import '../../domain/entities/group_entity.dart';
 import '../providers/group_providers.dart';
+import '../widgets/group_plans_tab_view.dart';
 
 class GroupDetailsScreen extends ConsumerWidget {
   final String groupId;
@@ -127,13 +128,14 @@ class GroupDetailsScreen extends ConsumerWidget {
       ),
       endDrawer: _buildGroupDrawer(context, ref, currentUserId),
       body: DefaultTabController(
-        length: 2,
+        length: 3,
         child: Column(
           children: [
             const TabBar(
               tabs: [
                 Tab(text: AppConstants.expenses),
                 Tab(text: AppConstants.balances),
+                Tab(text: 'Plans'),
               ],
             ),
             Expanded(
@@ -677,7 +679,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                                         style: TextStyle(
                                           color: color,
                                           fontWeight: FontWeight.bold,
-                                      ),
+                                        ),
                                       ),
                                     ),
                                     title: Text(
@@ -769,6 +771,8 @@ class GroupDetailsScreen extends ConsumerWidget {
                       );
                     },
                   ),
+                  // ─── Plans Tab ────────────────────────────────────────
+                  GroupPlansTabView(groupId: groupId),
                 ],
               ),
             ),

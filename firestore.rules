@@ -113,6 +113,17 @@ service cloud.firestore {
       // Admin can delete the group
       allow delete: if isAuthenticated() && 
         request.auth.uid in resource.data.adminIds;
+
+      // Trip Plans subcollection — any group member can read/write
+      match /trip_plans/{tripPlanId} {
+        function isMember() {
+          return request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+        }
+        allow read: if isAuthenticated() && isMember();
+        allow create: if isAuthenticated() && isMember();
+        allow update: if isAuthenticated() && isMember();
+        allow delete: if isAuthenticated() && isMember();
+      }
     }
 
     // Expenses collection
@@ -167,6 +178,14 @@ service cloud.firestore {
       // Admin can delete settlements
       allow delete: if isAuthenticated() && 
         request.auth.uid in getGroup(resource.data.groupId).data.adminIds;
+    }
+
+    // Trip plan day cards (top-level collection keyed by tripPlanId)
+    match /trip_plans_cards/{tripPlanId} {
+      allow read, write: if isAuthenticated();
+      match /{allPaths=**} {
+        allow read, write: if isAuthenticated();
+      }
     }
   }
 }
