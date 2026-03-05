@@ -55,7 +55,7 @@ class TripPlanRepositoryImpl implements TripPlanRepository {
       'createdAt': Timestamp.fromDate(now),
       if (startDate != null) 'startDate': Timestamp.fromDate(startDate),
       if (endDate != null) 'endDate': Timestamp.fromDate(endDate),
-      if (estimatedBudget != null) 'estimatedBudget': estimatedBudget,
+      'estimatedBudget': ?estimatedBudget,
     });
 
     return plan;
