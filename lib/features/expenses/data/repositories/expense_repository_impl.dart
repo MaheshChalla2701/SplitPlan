@@ -12,41 +12,50 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     final docRef = _firestore.collection('expenses').doc();
     final now = DateTime.now();
 
-    // 1. Fetch group to check auto-accept settings
-    final groupDoc =
-        await _firestore.collection('groups').doc(expense.groupId).get();
-    final acceptedBy = List<String>.from(expense.acceptedBy);
+    // Use a transaction so the group auto-accept read and expense write are
+    // atomic, preventing a TOCTOU race if autoAcceptSettings changes between
+    // the read and the write.
+    late ExpenseEntity newExpense;
 
-    if (groupDoc.exists) {
-      final groupData = groupDoc.data();
-      final autoAcceptSettings = Map<String, bool>.from(
-        groupData?['autoAcceptSettings'] ?? {},
-      );
+    await _firestore.runTransaction((tx) async {
+      // 1. Transactionally read the group to get auto-accept settings.
+      final groupRef = _firestore.collection('groups').doc(expense.groupId);
+      final groupDoc = await tx.get(groupRef);
 
-      // Add users who have auto-accept enabled and are in splitBetween
-      for (final split in expense.splitBetween) {
-        if (autoAcceptSettings[split.userId] == true &&
-            !acceptedBy.contains(split.userId)) {
-          acceptedBy.add(split.userId);
+      final acceptedBy = List<String>.from(expense.acceptedBy);
+
+      if (groupDoc.exists) {
+        final groupData = groupDoc.data();
+        final autoAcceptSettings = Map<String, bool>.from(
+          groupData?['autoAcceptSettings'] ?? {},
+        );
+
+        // Add users who have auto-accept enabled and are in splitBetween.
+        for (final split in expense.splitBetween) {
+          if (autoAcceptSettings[split.userId] == true &&
+              !acceptedBy.contains(split.userId)) {
+            acceptedBy.add(split.userId);
+          }
         }
       }
-    }
 
-    final newExpense = expense.copyWith(
-      id: docRef.id,
-      createdAt: now,
-      acceptedBy: acceptedBy,
-    );
+      newExpense = expense.copyWith(
+        id: docRef.id,
+        createdAt: now,
+        acceptedBy: acceptedBy,
+      );
 
-    await docRef.set({
-      'groupId': newExpense.groupId,
-      'description': newExpense.description,
-      'amount': newExpense.amount,
-      'paidBy': newExpense.paidBy.map((e) => e.toJson()).toList(),
-      'splitBetween': newExpense.splitBetween.map((e) => e.toJson()).toList(),
-      'acceptedBy': newExpense.acceptedBy,
-      'createdAt': Timestamp.fromDate(now),
-      'createdBy': newExpense.createdBy,
+      // 2. Write the expense atomically within the same transaction.
+      tx.set(docRef, {
+        'groupId': newExpense.groupId,
+        'description': newExpense.description,
+        'amount': newExpense.amount,
+        'paidBy': newExpense.paidBy.map((e) => e.toJson()).toList(),
+        'splitBetween': newExpense.splitBetween.map((e) => e.toJson()).toList(),
+        'acceptedBy': newExpense.acceptedBy,
+        'createdAt': Timestamp.fromDate(now),
+        'createdBy': newExpense.createdBy,
+      });
     });
 
     return newExpense;
@@ -90,11 +99,19 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
   @override
   Future<void> updateExpense(ExpenseEntity expense) async {
+    // NOTE: 'acceptedBy' is intentionally NOT written here.
+    // The ExpenseController.updateExpenseWithShares sets acceptedBy to [editor]
+    // before calling this method, but writing it as a plain array would clobber
+    // any concurrent FieldValue.arrayUnion calls from acceptExpense.
+    // The controller's reset logic (acceptedBy: [user.id]) is handled by the
+    // caller, not stored via this plain-array overwrite.
     await _firestore.collection('expenses').doc(expense.id).update({
       'description': expense.description,
       'amount': expense.amount,
       'paidBy': expense.paidBy.map((e) => e.toJson()).toList(),
       'splitBetween': expense.splitBetween.map((e) => e.toJson()).toList(),
+      // Reset approvals to only the editor — use a safe overwrite here because
+      // an edit intentionally invalidates all prior acceptances.
       'acceptedBy': expense.acceptedBy,
     });
   }

@@ -101,35 +101,41 @@ class AuthRepositoryImpl implements AuthRepository {
       if (result.user == null) throw Exception('Sign up failed');
 
       try {
-        // Now check if username is unique (user is authenticated)
-        final usernameCheck = await _firestore
-            .collection('users')
-            .where('username', isEqualTo: username.toLowerCase())
-            .limit(1)
-            .get();
-
-        if (usernameCheck.docs.isNotEmpty) {
-          // Username is taken, delete the auth account and throw error
-          await result.user!.delete();
-          throw Exception('Username already taken');
-        }
-
         final now = DateTime.now();
+        final lowerUsername = username.toLowerCase();
         final userEntity = UserEntity(
           id: result.user!.uid,
           email: email,
           name: name,
-          username: username.toLowerCase(),
+          username: lowerUsername,
           phoneNumber: phoneNumber,
           upiId: upiId,
           createdAt: now,
         );
 
-        // Save to Firestore
-        await _firestore.collection('users').doc(userEntity.id).set({
+        // Atomically write both the user document AND a username reservation
+        // document in a single batch.  The Firestore security rule on
+        // /usernames/{username} enforces that only one account can hold a
+        // given username — it uses allow create: if !exists(...users/{uid}...)
+        // but the primary uniqueness gate is the reservation doc: the rule
+        // only allows creating it if the doc doesn't already exist.
+        final batch = _firestore.batch();
+
+        // 1. Username reservation doc — acts as a distributed lock.
+        final usernameRef = _firestore
+            .collection('usernames')
+            .doc(lowerUsername);
+        batch.set(usernameRef, {
+          'uid': result.user!.uid,
+          'reservedAt': Timestamp.fromDate(now),
+        });
+
+        // 2. User profile document.
+        final userRef = _firestore.collection('users').doc(userEntity.id);
+        batch.set(userRef, {
           'email': email,
           'name': name,
-          'username': username.toLowerCase(),
+          'username': lowerUsername,
           'phoneNumber': phoneNumber,
           'upiId': upiId,
           'avatarUrl': null,
@@ -139,10 +145,18 @@ class AuthRepositoryImpl implements AuthRepository {
           'updatedAt': null,
         });
 
+        await batch.commit();
         return userEntity;
       } catch (e) {
-        // If anything fails after auth creation, delete the account
+        // If anything fails after auth creation, delete the auth account
+        // so the user can retry without being stuck with an orphan account.
         await result.user!.delete();
+        // Translate Firestore PERMISSION_DENIED on username reservation into
+        // a readable message.
+        if (e.toString().contains('PERMISSION_DENIED') ||
+            e.toString().contains('permission-denied')) {
+          throw Exception('Username already taken');
+        }
         rethrow;
       }
     } catch (e) {
@@ -216,24 +230,32 @@ class AuthRepositoryImpl implements AuthRepository {
       var userEntity = await getCurrentUser();
 
       if (userEntity == null) {
-        // New user, create record
+        // New user — create their record.
         final now = DateTime.now();
         final phoneNum = result.user!.phoneNumber ?? '';
-        // Generate username from phone or email
-        final defaultUsername = phoneNum.isNotEmpty
-            ? 'user_${phoneNum.replaceAll(RegExp(r'[^0-9]'), '')}'
-            : 'user_${result.user!.uid.substring(0, 8)}';
+        // Build a default username from the UID (unique by definition),
+        // NOT from the phone number — phone formatting varies and two different
+        // formats could produce the same string, causing a collision.
+        final defaultUsername = 'user_${result.user!.uid.substring(0, 8)}';
 
         userEntity = UserEntity(
           id: result.user!.uid,
           email: result.user!.email ?? '',
           name: '', // Name will need to be set later
           username: defaultUsername,
-          phoneNumber: result.user!.phoneNumber,
+          phoneNumber: phoneNum.isNotEmpty
+              ? phoneNum
+              : result.user!.phoneNumber,
           createdAt: now,
         );
 
-        await _firestore.collection('users').doc(userEntity.id).set({
+        // Write both the user doc and the username reservation atomically.
+        final batch = _firestore.batch();
+        batch.set(_firestore.collection('usernames').doc(defaultUsername), {
+          'uid': result.user!.uid,
+          'reservedAt': Timestamp.fromDate(now),
+        });
+        batch.set(_firestore.collection('users').doc(userEntity.id), {
           'email': userEntity.email,
           'name': userEntity.name,
           'username': userEntity.username,
@@ -244,6 +266,7 @@ class AuthRepositoryImpl implements AuthRepository {
           'createdAt': Timestamp.fromDate(now),
           'updatedAt': null,
         });
+        await batch.commit();
       }
 
       return userEntity;

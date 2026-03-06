@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -159,9 +161,32 @@ class ExpenseController extends _$ExpenseController {
   }
 }
 
-// Balances Provider — reactive; re-runs whenever expenses or settlements change
+// Balances Provider — reactive; re-runs whenever expenses or settlements change.
+// A 300 ms debounce prevents showing a briefly-wrong balance when expenses and
+// settlements arrive on their two independent Firestore streams at slightly
+// different times (e.g. during a concurrent edit or settlement creation).
 @riverpod
 Future<Map<String, Balance>> groupBalances(Ref ref, String groupId) async {
+  // Debounce: wait briefly after the last stream emission before computing.
+  // This merges rapid back-to-back updates (expenses stream + settlements
+  // stream firing within the same 300 ms window) into a single computation.
+  bool debounced = false;
+  final completer = Completer<void>();
+  Timer? timer;
+
+  timer = Timer(const Duration(milliseconds: 300), () {
+    debounced = true;
+    if (!completer.isCompleted) completer.complete();
+  });
+
+  ref.onDispose(() {
+    timer?.cancel();
+    if (!completer.isCompleted) completer.completeError('disposed');
+  });
+
+  await completer.future;
+  if (!debounced) return {};
+
   // Watching these stream providers means this Future re-evaluates on every emission
   final expenses = await ref.watch(groupExpensesProvider(groupId).future);
   final settlements = await ref.watch(groupSettlementsProvider(groupId).future);

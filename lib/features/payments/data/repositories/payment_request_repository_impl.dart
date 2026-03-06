@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:developer' as developer;
 import '../../domain/entities/payment_request_entity.dart';
 import '../../domain/repositories/payment_request_repository.dart';
 
@@ -11,68 +10,87 @@ class PaymentRequestRepositoryImpl implements PaymentRequestRepository {
   @override
   Future<void> createPaymentRequest(PaymentRequestEntity request) async {
     try {
-      var status = request.status;
+      // 1. Pre-query the friendship document reference.
+      // Firestore transactions do not support queries (.where().get()), only
+      // direct document reads (.get(docRef)). We find the DocumentReference first
+      // outside the transaction, then read its actual data atomically inside.
+      DocumentReference? friendshipRef;
 
-      // Check if target user is a manual friend to auto-accept
-      final toUserDoc = await _firestore
-          .collection('users')
-          .doc(request.toUserId)
+      var fwdSnap = await _firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: request.toUserId)
+          .where('friendId', isEqualTo: request.fromUserId)
+          .limit(1)
           .get();
 
-      if (toUserDoc.exists && (toUserDoc.data()?['isManual'] ?? false)) {
-        status = PaymentRequestStatus.accepted;
-      } else if (toUserDoc.exists) {
-        // Check if the sender is still in the receiver's friend list
-        // This handles the "Soft Block" where if a user deleted me, I can't send them requests
-        final friends = List<String>.from(toUserDoc.data()?['friends'] ?? []);
-        if (!friends.contains(request.fromUserId)) {
-          throw Exception(
-            'User is not your friend. Please send a friend request to reconnect.',
-          );
-        }
-
-        // Check for Auto-Accept
-        try {
-          // Find friendship doc (bidirectional check)
-          var friendshipQuery = await _firestore
-              .collection('friendships')
-              .where('userId', isEqualTo: request.toUserId)
-              .where('friendId', isEqualTo: request.fromUserId)
-              .limit(1)
-              .get();
-
-          if (friendshipQuery.docs.isEmpty) {
-            friendshipQuery = await _firestore
-                .collection('friendships')
-                .where('userId', isEqualTo: request.fromUserId)
-                .where('friendId', isEqualTo: request.toUserId)
-                .limit(1)
-                .get();
-          }
-
-          if (friendshipQuery.docs.isNotEmpty) {
-            final data = friendshipQuery.docs.first.data();
-            final autoAcceptSettings =
-                data['autoAcceptSettings'] as Map<String, dynamic>?;
-            if (autoAcceptSettings != null &&
-                autoAcceptSettings[request.toUserId] == true) {
-              status = PaymentRequestStatus.accepted;
-            }
-          }
-        } catch (e) {
-          // Ignore error, proceed with default status
-          developer.log('Error checking auto-accept', error: e);
+      if (fwdSnap.docs.isNotEmpty) {
+        friendshipRef = fwdSnap.docs.first.reference;
+      } else {
+        var revSnap = await _firestore
+            .collection('friendships')
+            .where('userId', isEqualTo: request.fromUserId)
+            .where('friendId', isEqualTo: request.toUserId)
+            .limit(1)
+            .get();
+        if (revSnap.docs.isNotEmpty) {
+          friendshipRef = revSnap.docs.first.reference;
         }
       }
 
-      await _firestore.collection('payment_requests').add({
-        'fromUserId': request.fromUserId,
-        'toUserId': request.toUserId,
-        'amount': request.amount,
-        'description': request.description,
-        'type': request.type.name,
-        'status': status.name,
-        'createdAt': FieldValue.serverTimestamp(),
+      // 2. Execute the atomic transaction for all reads & the single write.
+      await _firestore.runTransaction((tx) async {
+        // --- Read 1: target user doc ---
+        final toUserRef = _firestore.collection('users').doc(request.toUserId);
+        final toUserSnap = await tx.get(toUserRef);
+
+        var status = request.status;
+
+        if (!toUserSnap.exists) {
+          throw Exception('Recipient user not found');
+        }
+
+        final toUserData = toUserSnap.data()!;
+        final isManual = toUserData['isManual'] ?? false;
+
+        if (isManual) {
+          // Manual friends always auto-accept.
+          status = PaymentRequestStatus.accepted;
+        } else {
+          // Check soft-block: sender must still be in receiver's friends list.
+          final friends = List<String>.from(toUserData['friends'] ?? []);
+          if (!friends.contains(request.fromUserId)) {
+            throw Exception(
+              'User is not your friend. Please send a friend request to reconnect.',
+            );
+          }
+
+          // --- Read 2: friendship doc (transactional read) ---
+          if (friendshipRef != null) {
+            final friendshipSnap = await tx.get(friendshipRef);
+            if (friendshipSnap.exists) {
+              final friendshipData =
+                  friendshipSnap.data() as Map<String, dynamic>;
+              final autoAcceptSettings =
+                  friendshipData['autoAcceptSettings'] as Map<String, dynamic>?;
+              if (autoAcceptSettings != null &&
+                  autoAcceptSettings[request.toUserId] == true) {
+                status = PaymentRequestStatus.accepted;
+              }
+            }
+          }
+        }
+
+        // --- Write: create the payment request with the computed status ---
+        final newRef = _firestore.collection('payment_requests').doc();
+        tx.set(newRef, {
+          'fromUserId': request.fromUserId,
+          'toUserId': request.toUserId,
+          'amount': request.amount,
+          'description': request.description,
+          'type': request.type.name,
+          'status': status.name,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       });
     } catch (e) {
       throw Exception('Failed to create payment request: $e');
@@ -153,30 +171,37 @@ class PaymentRequestRepositoryImpl implements PaymentRequestRepository {
     String userId,
     String friendId,
   ) {
+    // Use a composite OR filter so only the two specific directional pairs
+    // (userId→friendId and friendId→userId) are fetched from Firestore.
+    // This avoids the previous over-fetch where ALL requests by either user
+    // were downloaded just to filter the pair client-side.
     return _firestore
         .collection('payment_requests')
-        .where('fromUserId', whereIn: [userId, friendId])
+        .where(
+          Filter.or(
+            Filter.and(
+              Filter('fromUserId', isEqualTo: userId),
+              Filter('toUserId', isEqualTo: friendId),
+            ),
+            Filter.and(
+              Filter('fromUserId', isEqualTo: friendId),
+              Filter('toUserId', isEqualTo: userId),
+            ),
+          ),
+        )
+        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-              .where((doc) {
-                final data = doc.data();
-                final from = data['fromUserId'] as String;
-                final to = data['toUserId'] as String;
-                return (from == userId && to == friendId) ||
-                    (from == friendId && to == userId);
-              })
-              .map((doc) {
-                final data = doc.data();
-                return PaymentRequestEntity.fromJson({
-                  'id': doc.id,
-                  ...data,
-                  'createdAt': (data['createdAt'] as Timestamp)
-                      .toDate()
-                      .toIso8601String(),
-                });
-              })
-              .toList();
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            return PaymentRequestEntity.fromJson({
+              'id': doc.id,
+              ...data,
+              'createdAt': (data['createdAt'] as Timestamp)
+                  .toDate()
+                  .toIso8601String(),
+            });
+          }).toList();
         });
   }
 

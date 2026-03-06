@@ -111,7 +111,7 @@ class FriendsRepositoryImpl implements FriendsRepository {
     try {
       developer.log('Accepting friendship $friendshipId');
 
-      // First, get the friendship data
+      // Get the friendship data first to extract user IDs.
       final friendship = await _firestore
           .collection('friendships')
           .doc(friendshipId)
@@ -128,24 +128,25 @@ class FriendsRepositoryImpl implements FriendsRepository {
 
       developer.log('userId=$userId, friendId=$friendId');
 
-      // Update status to accepted
-      await _firestore.collection('friendships').doc(friendshipId).update({
+      // All three writes (status + both friends arrays) are done atomically in
+      // a single batch, so a crash or disconnect can never leave the friendship
+      // in an accepted state while the friends arrays are still not updated.
+      final batch = _firestore.batch();
+
+      batch.update(_firestore.collection('friendships').doc(friendshipId), {
         'status': 'accepted',
       });
-      developer.log('Updated friendship status to accepted');
 
-      // Update both users' friends arrays (create if doesn't exist)
-      await _firestore.collection('users').doc(userId).set({
+      batch.set(_firestore.collection('users').doc(userId), {
         'friends': FieldValue.arrayUnion([friendId]),
       }, SetOptions(merge: true));
-      developer.log('Updated userId friends array');
 
-      await _firestore.collection('users').doc(friendId).set({
+      batch.set(_firestore.collection('users').doc(friendId), {
         'friends': FieldValue.arrayUnion([userId]),
       }, SetOptions(merge: true));
-      developer.log('Updated friendId friends array');
 
-      developer.log('Successfully accepted friend request!');
+      await batch.commit();
+      developer.log('Successfully accepted friend request (atomic batch)!');
     } catch (e) {
       developer.log('Error accepting friend request', error: e);
       throw Exception('Failed to accept friend request: $e');
@@ -400,14 +401,18 @@ class FriendsRepositoryImpl implements FriendsRepository {
   Future<void> createManualFriend(String name) async {
     try {
       final now = DateTime.now();
-      final manualFriendDoc = _firestore.collection('users').doc();
+      final manualFriendRef = _firestore.collection('users').doc();
       final userId = _currentUserId;
 
-      // 1. Create the manual friend user document
-      await manualFriendDoc.set({
+      // All three writes are committed atomically so a crash mid-way cannot
+      // leave an orphan user doc without a friendship record, or vice versa.
+      final batch = _firestore.batch();
+
+      // 1. Create the manual friend user document.
+      batch.set(manualFriendRef, {
         'name': name,
-        'username': 'manual_${manualFriendDoc.id.substring(0, 8)}',
-        'email': 'manual_${manualFriendDoc.id}@splitplan.manual',
+        'username': 'manual_${manualFriendRef.id.substring(0, 8)}',
+        'email': 'manual_${manualFriendRef.id}@splitplan.manual',
         'isManual': true,
         'isSearchable': false,
         'ownerId': userId,
@@ -417,18 +422,21 @@ class FriendsRepositoryImpl implements FriendsRepository {
         'avatarUrl': null,
       });
 
-      // 2. Add manual friend to current user's friends list
-      await _firestore.collection('users').doc(userId).update({
-        'friends': FieldValue.arrayUnion([manualFriendDoc.id]),
+      // 2. Add manual friend to current user's friends list.
+      batch.update(_firestore.collection('users').doc(userId), {
+        'friends': FieldValue.arrayUnion([manualFriendRef.id]),
       });
 
-      // 3. Create an automatically accepted friendship
-      await _firestore.collection('friendships').add({
+      // 3. Create an automatically accepted friendship.
+      final friendshipRef = _firestore.collection('friendships').doc();
+      batch.set(friendshipRef, {
         'userId': userId,
-        'friendId': manualFriendDoc.id,
+        'friendId': manualFriendRef.id,
         'status': 'accepted',
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      await batch.commit();
     } catch (e) {
       throw Exception('Failed to create manual friend: $e');
     }

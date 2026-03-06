@@ -221,49 +221,53 @@ async function handleExpenseCreateEvent(expenseId, expenseData) {
         const title = `🧾 New Group Expense`;
         const body = `${creatorName} added ₹${formattedAmount} for ${desc} in ${groupData.name}`;
 
-        // Send to all members EXCEPT createdBy
+        // Send to all members EXCEPT createdBy — in parallel so a single slow
+        // FCM call does not block notifications to all other members.
         const targetMemberIds = memberIds.filter(id => id !== createdBy);
 
-        for (const targetUserId of targetMemberIds) {
-            const targetDoc = await db.collection("users").doc(targetUserId).get();
-            const targetData = targetDoc.data();
-            const fcmToken = targetData?.fcmToken;
-            const notificationsEnabled = targetData?.notificationsEnabled ?? true;
-            const mutedUids = targetData?.mutedUids || [];
+        await Promise.allSettled(
+            targetMemberIds.map(async (targetUserId) => {
+                try {
+                    const targetDoc = await db.collection("users").doc(targetUserId).get();
+                    const targetData = targetDoc.data();
+                    const fcmToken = targetData?.fcmToken;
+                    const notificationsEnabled = targetData?.notificationsEnabled ?? true;
+                    const mutedUids = targetData?.mutedUids || [];
 
-            if (!fcmToken) continue;
+                    if (!fcmToken) return;
 
-            if (notificationsEnabled === false) {
-                console.log(`Notifications disabled by user ${targetUserId}, skipping group expense.`);
-                continue;
-            }
+                    if (notificationsEnabled === false) {
+                        console.log(`Notifications disabled by user ${targetUserId}, skipping group expense.`);
+                        return;
+                    }
 
-            if (mutedUids.includes(createdBy) || mutedUids.includes(groupId)) {
-                console.log(`Notifications for group ${groupId} or user ${createdBy} muted by user ${targetUserId}, skipping group expense.`);
-                continue;
-            }
+                    if (mutedUids.includes(createdBy) || mutedUids.includes(groupId)) {
+                        console.log(`Notifications for group ${groupId} or user ${createdBy} muted by user ${targetUserId}, skipping group expense.`);
+                        return;
+                    }
 
-            await messaging.send({
-                token: fcmToken,
-                notification: {
-                    title,
-                    body,
-                },
-                android: {
-                    notification: {
-                        channelId: "payment_requests", // Can reuse the same channel for heads-up alerts
-                        priority: "high",
-                        sound: "default",
-                    },
-                },
-                data: {
-                    expenseId: expenseId,
-                    groupId: groupId,
-                    type: "group_expense",
-                },
-            });
-            console.log(`✅ [CREATE_EXPENSE] Notification sent to ${targetUserId} for expense ${expenseId}`);
-        }
+                    await messaging.send({
+                        token: fcmToken,
+                        notification: { title, body },
+                        android: {
+                            notification: {
+                                channelId: "payment_requests",
+                                priority: "high",
+                                sound: "default",
+                            },
+                        },
+                        data: {
+                            expenseId: expenseId,
+                            groupId: groupId,
+                            type: "group_expense",
+                        },
+                    });
+                    console.log(`✅ [CREATE_EXPENSE] Notification sent to ${targetUserId} for expense ${expenseId}`);
+                } catch (err) {
+                    console.error(`❌ Error sending notification to ${targetUserId} for expense ${expenseId}:`, err);
+                }
+            })
+        );
     } catch (error) {
         console.error(`❌ Error sending [CREATE_EXPENSE] notification for ${expenseId}:`, error);
     }

@@ -40,6 +40,44 @@ class GroupRepositoryImpl implements GroupRepository {
 
   @override
   Future<void> deleteGroup(String groupId) async {
+    // Cascade-delete all expenses and settlements belonging to this group
+    // before deleting the group itself. Without this, those documents remain
+    // in Firestore indefinitely, wasting storage and corrupting analytics.
+    //
+    // Firestore batches are limited to 500 operations, so we chunk if needed.
+    const chunkSize = 400; // safe margin below 500-op limit
+
+    // 1. Delete related expenses
+    final expensesSnap = await _firestore
+        .collection('expenses')
+        .where('groupId', isEqualTo: groupId)
+        .get();
+
+    for (var i = 0; i < expensesSnap.docs.length; i += chunkSize) {
+      final chunk = expensesSnap.docs.skip(i).take(chunkSize);
+      final batch = _firestore.batch();
+      for (final doc in chunk) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+
+    // 2. Delete related settlements
+    final settlementsSnap = await _firestore
+        .collection('settlements')
+        .where('groupId', isEqualTo: groupId)
+        .get();
+
+    for (var i = 0; i < settlementsSnap.docs.length; i += chunkSize) {
+      final chunk = settlementsSnap.docs.skip(i).take(chunkSize);
+      final batch = _firestore.batch();
+      for (final doc in chunk) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+
+    // 3. Delete the group document itself
     await _firestore.collection('groups').doc(groupId).delete();
   }
 

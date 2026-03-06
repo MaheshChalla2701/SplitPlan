@@ -64,6 +64,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _amountController = TextEditingController();
 
   bool _isScanning = false;
+  bool _isSubmitting = false; // synchronous guard against double-submit
   SplitMode _splitMode = SplitMode.evenly;
 
   Set<String> _selectedMemberIds = {};
@@ -222,8 +223,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   void _submit() {
+    // Guard: set synchronously so that double-taps in the same frame are
+    // rejected before the async state.isLoading transition occurs.
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
     final splitError = _validateSplit();
     if (splitError != null) {
+      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(splitError)));
@@ -232,7 +239,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     if (_formKey.currentState!.validate()) {
       final user = ref.read(authStateProvider).value;
-      if (user == null) return;
+      if (user == null) {
+        setState(() => _isSubmitting = false);
+        return;
+      }
 
       final shares = _computeShares();
       if (widget.existingExpense != null) {
@@ -258,6 +268,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               splitShares: shares,
             );
       }
+    } else {
+      setState(() => _isSubmitting = false);
     }
   }
 
@@ -270,12 +282,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     ref.listen(expenseControllerProvider, (previous, next) {
       next.whenOrNull(
         error: (error, _) {
+          setState(() => _isSubmitting = false); // re-enable on error
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(error.toString())));
         },
         data: (_) {
           if (previous?.isLoading == true) {
+            setState(() => _isSubmitting = false); // reset on success
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -467,7 +481,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   const SizedBox(height: 28),
 
                   FilledButton(
-                    onPressed: state.isLoading ? null : _submit,
+                    onPressed: (state.isLoading || _isSubmitting)
+                        ? null
+                        : _submit,
                     child: state.isLoading
                         ? const SizedBox(
                             height: 20,

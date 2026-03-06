@@ -180,6 +180,21 @@ service cloud.firestore {
         request.auth.uid in getGroup(resource.data.groupId).data.adminIds;
     }
 
+    // Usernames reservation collection
+    // Each doc is keyed by the lowercase username and holds the uid of its owner.
+    // The rule only allows CREATE (not update/delete), and only when the document
+    // does not already exist — this is the server-side uniqueness guarantee.
+    // The client writes this atomically together with the user doc in a batch.
+    match /usernames/{username} {
+      allow read: if isAuthenticated();
+      // Allow create only if the doc doesn't already exist (uniqueness gate)
+      allow create: if isAuthenticated() &&
+        request.resource.data.uid == request.auth.uid &&
+        !exists(/databases/$(database)/documents/usernames/$(username));
+      // Usernames are permanent — no updates or deletes allowed
+      allow update, delete: if false;
+    }
+
     // Trip plan day cards (top-level collection keyed by tripPlanId)
     match /trip_plans_cards/{tripPlanId} {
       allow read, write: if isAuthenticated();
